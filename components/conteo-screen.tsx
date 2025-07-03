@@ -163,7 +163,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
   ]
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 min-h-screen">
       {/* Header */}
       <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader className="pb-3">
@@ -348,7 +348,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
             Agregar Simpatizante
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle>Agregar Simpatizante</DialogTitle>
@@ -358,7 +358,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-4">
+          <div className="space-y-4">
             {!showNewForm ? (
               <>
                 {/* Search */}
@@ -454,7 +454,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
       {/* Save Button */}
       <Button
         onClick={handleSaveConteo}
-        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-4 shadow-lg text-lg font-semibold"
+        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-4 shadow-lg text-lg font-semibold mb-4"
       >
         <Save className="w-5 h-5 mr-2" />
         Guardar Conteo de Asistencia

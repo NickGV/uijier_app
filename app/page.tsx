@@ -170,8 +170,8 @@ export default function UjierApp() {
 
   return (
     <div className="max-w-sm mx-auto bg-gradient-to-b from-slate-50 to-gray-100 min-h-screen">
-      <div className="h-screen flex flex-col">
-        <div className="flex-1 overflow-hidden">
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-1 pb-20">
           {currentScreen === "simpatizantes" ? (
             <SimpatizantesScreen
               simpatizantes={simpatizantes}
@@ -183,7 +183,9 @@ export default function UjierApp() {
           )}
         </div>
         {currentScreen !== "simpatizante-detail" && (
-          <BottomNavigation currentScreen={currentScreen} onScreenChange={setCurrentScreen} />
+          <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm z-50">
+            <BottomNavigation currentScreen={currentScreen} onScreenChange={setCurrentScreen} />
+          </div>
         )}
       </div>
     </div>

@@ -16,7 +16,7 @@ export function BottomNavigation({ currentScreen, onScreenChange }: BottomNaviga
   ]
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm border-t border-gray-200 p-2">
+    <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-2 shadow-lg">
       <div className="flex justify-around">
         {navItems.map((item) => {
           const Icon = item.icon
