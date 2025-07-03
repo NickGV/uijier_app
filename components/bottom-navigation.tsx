@@ -27,12 +27,12 @@ export function BottomNavigation({ currentScreen, onScreenChange }: BottomNaviga
               key={item.id}
               variant="ghost"
               className={`flex flex-col items-center gap-1 h-auto py-2 px-4 ${
-                isActive ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                isActive ? "text-slate-700 bg-slate-100" : "text-gray-600 hover:text-slate-700 hover:bg-slate-50"
               }`}
               onClick={() => onScreenChange(item.id)}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-gray-600"}`} />
-              <span className={`text-xs font-medium ${isActive ? "text-blue-600" : "text-gray-600"}`}>
+              <Icon className={`w-5 h-5 ${isActive ? "text-slate-700" : "text-gray-600"}`} />
+              <span className={`text-xs font-medium ${isActive ? "text-slate-700" : "text-gray-600"}`}>
                 {item.label}
               </span>
             </Button>

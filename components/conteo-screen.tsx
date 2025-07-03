@@ -5,25 +5,49 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Minus, Edit3, UserPlus, Wifi, WifiOff } from "lucide-react"
+import { Plus, Minus, Edit3, UserPlus, Calendar, User, Clock, Search, X, Save, Users, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export function ConteoScreen() {
+interface ConteoScreenProps {
+  simpatizantes: any[]
+  onAddSimpatizante: (simpatizante: any) => any
+  onSaveConteo: (conteo: any) => void
+}
+
+export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }: ConteoScreenProps) {
   const [hermanos, setHermanos] = useState(0)
   const [hermanas, setHermanas] = useState(0)
-  const [simpatizantes, setSimpatizantes] = useState(0)
-  const [isOnline, setIsOnline] = useState(true)
+  const [ninos, setNinos] = useState(0)
+  const [adolescentes, setAdolescentes] = useState(0)
   const [editingCounter, setEditingCounter] = useState<string | null>(null)
   const [tempValue, setTempValue] = useState("")
-  const [newSimpatizante, setNewSimpatizante] = useState("")
   const [showAddDialog, setShowAddDialog] = useState(false)
 
-  const currentDate = new Date().toLocaleDateString("es-ES", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+  // Estados para simpatizantes del día
+  const [simpatizantesDelDia, setSimpatizantesDelDia] = useState<any[]>([])
+
+  // Estados para el diálogo de simpatizantes
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [newSimpatizante, setNewSimpatizante] = useState({
+    nombre: "",
+    telefono: "",
+    notas: "",
   })
+
+  // Campos editables
+  const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0])
+  const [tipoServicio, setTipoServicio] = useState("dominical")
+  const [nombreUjier, setNombreUjier] = useState("")
+
+  const servicios = [
+    { value: "dominical", label: "Dominical" },
+    { value: "oracion", label: "Oración y Enseñanza" },
+    { value: "dorcas", label: "Hermanas Dorcas" },
+    { value: "evangelismo", label: "Evangelismo" },
+    { value: "jovenes", label: "Jóvenes" },
+  ]
 
   const handleCounterEdit = (type: string, value: number) => {
     setEditingCounter(type)
@@ -39,262 +63,402 @@ export function ConteoScreen() {
       case "hermanas":
         setHermanas(newValue)
         break
-      case "simpatizantes":
-        setSimpatizantes(newValue)
+      case "ninos":
+        setNinos(newValue)
+        break
+      case "adolescentes":
+        setAdolescentes(newValue)
         break
     }
     setEditingCounter(null)
     setTempValue("")
   }
 
-  const addSimpatizante = () => {
-    if (newSimpatizante.trim()) {
-      setSimpatizantes((prev) => prev + 1)
-      setNewSimpatizante("")
+  const selectExistingSimpatizante = (simpatizante: any) => {
+    // Verificar si ya está en la lista del día
+    if (simpatizantesDelDia.find((s) => s.id === simpatizante.id)) {
+      alert("Este simpatizante ya fue agregado hoy")
+      return
+    }
+
+    setSimpatizantesDelDia((prev) => [...prev, simpatizante])
+    setShowAddDialog(false)
+    setSearchTerm("")
+    setShowNewForm(false)
+  }
+
+  const addNewSimpatizante = () => {
+    if (newSimpatizante.nombre.trim()) {
+      const nuevoSimpatizante = onAddSimpatizante(newSimpatizante)
+      setSimpatizantesDelDia((prev) => [...prev, nuevoSimpatizante])
+      setNewSimpatizante({ nombre: "", telefono: "", notas: "" })
       setShowAddDialog(false)
+      setSearchTerm("")
+      setShowNewForm(false)
     }
   }
 
-  const total = hermanos + hermanas + simpatizantes
+  const removeSimpatizanteDelDia = (simpatizanteId: number) => {
+    setSimpatizantesDelDia((prev) => prev.filter((s) => s.id !== simpatizanteId))
+  }
+
+  const closeDialog = () => {
+    setShowAddDialog(false)
+    setSearchTerm("")
+    setShowNewForm(false)
+    setNewSimpatizante({ nombre: "", telefono: "", notas: "" })
+  }
+
+  const handleSaveConteo = () => {
+    if (!nombreUjier.trim()) {
+      alert("Por favor ingrese el nombre del ujier")
+      return
+    }
+
+    const conteoData = {
+      fecha,
+      servicio: servicios.find((s) => s.value === tipoServicio)?.label || tipoServicio,
+      ujier: nombreUjier,
+      hermanos,
+      hermanas,
+      ninos,
+      adolescentes,
+      simpatizantes: simpatizantesDelDia.length,
+      simpatizantesAsistieron: simpatizantesDelDia.map((s) => ({ id: s.id, nombre: s.nombre })),
+    }
+
+    onSaveConteo(conteoData)
+
+    // Resetear formulario
+    setHermanos(0)
+    setHermanas(0)
+    setNinos(0)
+    setAdolescentes(0)
+    setSimpatizantesDelDia([])
+    setFecha(new Date().toISOString().split("T")[0])
+    setTipoServicio("dominical")
+    setNombreUjier("")
+
+    alert("Conteo guardado exitosamente")
+  }
+
+  const filteredSimpatizantes = simpatizantes.filter(
+    (s) =>
+      s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) && !simpatizantesDelDia.find((sd) => sd.id === s.id),
+  )
+
+  const total = hermanos + hermanas + ninos + adolescentes + simpatizantesDelDia.length
+
+  const counters = [
+    { key: "hermanos", label: "Hermanos", value: hermanos, setter: setHermanos, color: "bg-slate-600" },
+    { key: "hermanas", label: "Hermanas", value: hermanas, setter: setHermanas, color: "bg-rose-600" },
+    { key: "ninos", label: "Niños", value: ninos, setter: setNinos, color: "bg-amber-600" },
+    {
+      key: "adolescentes",
+      label: "Adolescentes",
+      value: adolescentes,
+      setter: setAdolescentes,
+      color: "bg-purple-600",
+    },
+  ]
 
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-lg font-semibold text-gray-800">Conteo de Asistencia</CardTitle>
-              <p className="text-sm text-gray-600 mt-1 capitalize">{currentDate}</p>
+          <CardTitle className="text-lg font-semibold text-gray-800">Conteo de Asistencia</CardTitle>
+
+          {/* Campos editables */}
+          <div className="space-y-3 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Fecha
+                </label>
+                <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Servicio
+                </label>
+                <Select value={tipoServicio} onValueChange={setTipoServicio}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {servicios.map((servicio) => (
+                      <SelectItem key={servicio.value} value={servicio.value}>
+                        {servicio.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Badge variant={isOnline ? "default" : "destructive"} className="flex items-center gap-1">
-              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {isOnline ? "Online" : "Offline"}
-            </Badge>
+
+            <div>
+              <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                <User className="w-3 h-3" />
+                Nombre del Ujier
+              </label>
+              <Input
+                placeholder="Ingrese su nombre"
+                value={nombreUjier}
+                onChange={(e) => setNombreUjier(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
+
           <div className="flex gap-2 mt-3">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Servicio Dominical
+            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+              {servicios.find((s) => s.value === tipoServicio)?.label}
             </Badge>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Ujier: Juan Pérez
-            </Badge>
+            {nombreUjier && (
+              <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+                {nombreUjier}
+              </Badge>
+            )}
           </div>
         </CardHeader>
       </Card>
 
       {/* Total Counter */}
-      <Card className="bg-gradient-to-r from-blue-500 to-green-500 text-white border-0 shadow-lg">
+      <Card className="bg-gradient-to-r from-slate-700 to-slate-800 text-white border-0 shadow-lg">
         <CardContent className="p-6 text-center">
           <h2 className="text-3xl font-bold">{total}</h2>
-          <p className="text-blue-100">Total de Asistentes</p>
+          <p className="text-slate-200">Total de Asistentes</p>
         </CardContent>
       </Card>
 
       {/* Counters */}
       <div className="space-y-4">
-        {/* Hermanos */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
+        {counters.map((counter) => (
+          <Card key={counter.key} className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${counter.color} rounded-full`}></div>
+                  <span className="font-medium text-gray-800">{counter.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full bg-transparent border-gray-300"
+                    onClick={() => counter.setter(Math.max(0, counter.value - 1))}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+
+                  {editingCounter === counter.key ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        className="w-16 h-8 text-center"
+                        type="number"
+                      />
+                      <Button size="sm" onClick={saveCounterEdit} className="h-8 bg-slate-600 hover:bg-slate-700">
+                        ✓
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xl font-semibold w-8 text-center">{counter.value}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-6 h-6 p-0"
+                        onClick={() => handleCounterEdit(counter.key, counter.value)}
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full bg-transparent border-gray-300"
+                    onClick={() => counter.setter(counter.value + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Simpatizantes Counter */}
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="font-medium text-gray-800">Hermanos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setHermanos(Math.max(0, hermanos - 1))}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-
-                {editingCounter === "hermanos" ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      value={tempValue}
-                      onChange={(e) => setTempValue(e.target.value)}
-                      className="w-16 h-8 text-center"
-                      type="number"
-                    />
-                    <Button size="sm" onClick={saveCounterEdit} className="h-8">
-                      ✓
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xl font-semibold w-8 text-center">{hermanos}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-6 h-6 p-0"
-                      onClick={() => handleCounterEdit("hermanos", hermanos)}
-                    >
-                      <Edit3 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setHermanos(hermanos + 1)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Hermanas */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
-                <span className="font-medium text-gray-800">Hermanas</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setHermanas(Math.max(0, hermanas - 1))}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-
-                {editingCounter === "hermanas" ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      value={tempValue}
-                      onChange={(e) => setTempValue(e.target.value)}
-                      className="w-16 h-8 text-center"
-                      type="number"
-                    />
-                    <Button size="sm" onClick={saveCounterEdit} className="h-8">
-                      ✓
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xl font-semibold w-8 text-center">{hermanas}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-6 h-6 p-0"
-                      onClick={() => handleCounterEdit("hermanas", hermanas)}
-                    >
-                      <Edit3 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setHermanas(hermanas + 1)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Simpatizantes */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-emerald-600 rounded-full"></div>
                 <span className="font-medium text-gray-800">Simpatizantes</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setSimpatizantes(Math.max(0, simpatizantes - 1))}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-
-                {editingCounter === "simpatizantes" ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      value={tempValue}
-                      onChange={(e) => setTempValue(e.target.value)}
-                      className="w-16 h-8 text-center"
-                      type="number"
-                    />
-                    <Button size="sm" onClick={saveCounterEdit} className="h-8">
-                      ✓
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xl font-semibold w-8 text-center">{simpatizantes}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-6 h-6 p-0"
-                      onClick={() => handleCounterEdit("simpatizantes", simpatizantes)}
-                    >
-                      <Edit3 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-8 h-8 p-0 rounded-full bg-transparent"
-                  onClick={() => setSimpatizantes(simpatizantes + 1)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+                <span className="text-xl font-semibold">{simpatizantesDelDia.length}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Simpatizantes del día */}
+      {simpatizantesDelDia.length > 0 && (
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Simpatizantes que Asistieron Hoy ({simpatizantesDelDia.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {simpatizantesDelDia.map((simpatizante) => (
+              <div key={simpatizante.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                <div>
+                  <div className="font-medium text-sm">{simpatizante.nombre}</div>
+                  {simpatizante.telefono && <div className="text-xs text-gray-500">{simpatizante.telefono}</div>}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => removeSimpatizanteDelDia(simpatizante.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Add Simpatizante Button */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogTrigger asChild>
-          <Button className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white rounded-xl py-3 shadow-lg">
+          <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl py-3 shadow-lg">
             <UserPlus className="w-5 h-5 mr-2" />
             Agregar Simpatizante
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Agregar Simpatizante</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Nombre del simpatizante"
-              value={newSimpatizante}
-              onChange={(e) => setNewSimpatizante(e.target.value)}
-              className="rounded-lg"
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowAddDialog(false)}>
-                Cancelar
-              </Button>
-              <Button className="flex-1 bg-green-500 hover:bg-green-600" onClick={addSimpatizante}>
-                Agregar
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle>Agregar Simpatizante</DialogTitle>
+              <Button variant="ghost" size="sm" onClick={closeDialog}>
+                <X className="w-4 h-4" />
               </Button>
             </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4">
+            {!showNewForm ? (
+              <>
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Buscar simpatizante existente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Lista de simpatizantes existentes */}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {filteredSimpatizantes.length > 0 ? (
+                    filteredSimpatizantes.map((simpatizante) => (
+                      <div
+                        key={simpatizante.id}
+                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                        onClick={() => selectExistingSimpatizante(simpatizante)}
+                      >
+                        <div className="font-medium text-sm">{simpatizante.nombre}</div>
+                        <div className="text-xs text-gray-500">{simpatizante.telefono}</div>
+                        {simpatizante.notas && <div className="text-xs text-gray-400 mt-1">{simpatizante.notas}</div>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-4">
+                      {searchTerm ? "No se encontraron simpatizantes disponibles" : "No hay simpatizantes disponibles"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Botón para agregar nuevo */}
+                <div className="pt-3 border-t">
+                  <Button variant="outline" className="w-full bg-transparent" onClick={() => setShowNewForm(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Nuevo Simpatizante
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Formulario para nuevo simpatizante */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Nombre Completo *</label>
+                    <Input
+                      placeholder="Nombre del simpatizante"
+                      value={newSimpatizante.nombre}
+                      onChange={(e) => setNewSimpatizante({ ...newSimpatizante, nombre: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Teléfono</label>
+                    <Input
+                      placeholder="Número de teléfono"
+                      value={newSimpatizante.telefono}
+                      onChange={(e) => setNewSimpatizante({ ...newSimpatizante, telefono: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Notas</label>
+                    <Input
+                      placeholder="Notas adicionales"
+                      value={newSimpatizante.notas}
+                      onChange={(e) => setNewSimpatizante({ ...newSimpatizante, notas: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3">
+                  <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setShowNewForm(false)}>
+                    Volver
+                  </Button>
+                  <Button
+                    className="flex-1 bg-slate-600 hover:bg-slate-700"
+                    onClick={addNewSimpatizante}
+                    disabled={!newSimpatizante.nombre.trim()}
+                  >
+                    Agregar
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Save Button */}
+      <Button
+        onClick={handleSaveConteo}
+        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-4 shadow-lg text-lg font-semibold"
+      >
+        <Save className="w-5 h-5 mr-2" />
+        Guardar Conteo de Asistencia
+      </Button>
     </div>
   )
 }

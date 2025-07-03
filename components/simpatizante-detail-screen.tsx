@@ -11,9 +11,14 @@ import { ArrowLeft, Edit3, Save, Phone, Calendar, FileText } from "lucide-react"
 interface SimpatizanteDetailScreenProps {
   simpatizante: any
   onBack: () => void
+  onUpdateSimpatizante: (id: number, data: any) => void
 }
 
-export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteDetailScreenProps) {
+export function SimpatizanteDetailScreen({
+  simpatizante,
+  onBack,
+  onUpdateSimpatizante,
+}: SimpatizanteDetailScreenProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedData, setEditedData] = useState({
     nombre: simpatizante?.nombre || "",
@@ -22,7 +27,7 @@ export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteD
   })
 
   const handleSave = () => {
-    // Aquí se guardarían los cambios
+    onUpdateSimpatizante(simpatizante.id, editedData)
     setIsEditing(false)
   }
 
@@ -52,7 +57,7 @@ export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteD
       </Card>
 
       {/* Profile Card */}
-      <Card className="bg-gradient-to-r from-blue-500 to-green-500 text-white border-0 shadow-lg">
+      <Card className="bg-gradient-to-r from-slate-600 to-slate-700 text-white border-0 shadow-lg">
         <CardContent className="p-6 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
             <span className="text-2xl font-bold">
@@ -60,7 +65,7 @@ export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteD
             </span>
           </div>
           <h2 className="text-xl font-bold mb-1">{isEditing ? editedData.nombre : simpatizante.nombre}</h2>
-          <p className="text-blue-100">{isEditing ? editedData.telefono : simpatizante.telefono}</p>
+          <p className="text-slate-200">{isEditing ? editedData.telefono : simpatizante.telefono}</p>
         </CardContent>
       </Card>
 
@@ -79,7 +84,7 @@ export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteD
                 <Button variant="outline" size="sm" onClick={handleCancel}>
                   Cancelar
                 </Button>
-                <Button size="sm" onClick={handleSave} className="bg-green-500 hover:bg-green-600">
+                <Button size="sm" onClick={handleSave} className="bg-slate-600 hover:bg-slate-700">
                   <Save className="w-4 h-4 mr-2" />
                   Guardar
                 </Button>
@@ -176,7 +181,7 @@ export function SimpatizanteDetailScreen({ simpatizante, onBack }: SimpatizanteD
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        <Button className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl py-3">
+        <Button className="w-full bg-slate-600 hover:bg-slate-700 text-white rounded-xl py-3">
           <Phone className="w-5 h-5 mr-2" />
           Llamar
         </Button>
