@@ -6,6 +6,8 @@ import { HistorialScreen } from "@/components/historial-screen"
 import { SimpatizantesScreen } from "@/components/simpatizantes-screen"
 import { SimpatizanteDetailScreen } from "@/components/simpatizante-detail-screen"
 import { BottomNavigation } from "@/components/bottom-navigation"
+import { AdminPasswordInput } from "@/components/admin-password-input"
+import { Lock } from "lucide-react"
 
 // Estado inicial de simpatizantes
 const initialSimpatizantes = [
@@ -52,7 +54,7 @@ const initialHistorial = [
     id: 1,
     fecha: "2024-01-07",
     servicio: "Dominical",
-    ujier: "Juan Pérez",
+    ujier: "Wilmar Rojas",
     hermanos: 45,
     hermanas: 52,
     ninos: 18,
@@ -68,7 +70,7 @@ const initialHistorial = [
     id: 2,
     fecha: "2024-01-03",
     servicio: "Oración y Enseñanza",
-    ujier: "María García",
+    ujier: "Juan Caldera",
     hermanos: 32,
     hermanas: 38,
     ninos: 8,
@@ -81,7 +83,7 @@ const initialHistorial = [
     id: 3,
     fecha: "2023-12-31",
     servicio: "Dominical",
-    ujier: "Juan Pérez",
+    ujier: "Joaquin Velez",
     hermanos: 48,
     hermanas: 55,
     ninos: 22,
@@ -101,6 +103,8 @@ export default function UjierApp() {
   const [selectedSimpatizante, setSelectedSimpatizante] = useState<any>(null)
   const [simpatizantes, setSimpatizantes] = useState(initialSimpatizantes)
   const [historial, setHistorial] = useState(initialHistorial)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [showAdminDialog, setShowAdminDialog] = useState(false)
 
   const addSimpatizante = (nuevoSimpatizante: any) => {
     const newId = Math.max(...simpatizantes.map((s) => s.id)) + 1
@@ -130,6 +134,14 @@ export default function UjierApp() {
         conteoData.simpatizantes,
     }
     setHistorial((prev) => [nuevoRegistro, ...prev])
+  }
+
+  const handleScreenChange = (screen: string) => {
+    if (screen === "historial" && !isAdminAuthenticated) {
+      setShowAdminDialog(true)
+      return
+    }
+    setCurrentScreen(screen)
   }
 
   const renderScreen = () => {
@@ -184,10 +196,37 @@ export default function UjierApp() {
         </div>
         {currentScreen !== "simpatizante-detail" && (
           <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm z-50">
-            <BottomNavigation currentScreen={currentScreen} onScreenChange={setCurrentScreen} />
+            <BottomNavigation
+              currentScreen={currentScreen}
+              onScreenChange={handleScreenChange}
+              isAdminAuthenticated={isAdminAuthenticated}
+            />
           </div>
         )}
       </div>
+      {/* Admin Dialog */}
+      {showAdminDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Acceso de Administrador</h3>
+              <p className="text-sm text-gray-600 mt-2">Ingrese la clave para acceder al historial</p>
+            </div>
+
+            <AdminPasswordInput
+              onSuccess={() => {
+                setIsAdminAuthenticated(true)
+                setShowAdminDialog(false)
+                setCurrentScreen("historial")
+              }}
+              onCancel={() => setShowAdminDialog(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Minus, Edit3, UserPlus, Calendar, User, Clock, Search, X, Save, Users, Trash2 } from "lucide-react"
+import { Plus, Minus, Edit3, UserPlus, Calendar, User, Clock, Search, X, Save, Users, Trash2, Copy } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -20,6 +20,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
   const [hermanas, setHermanas] = useState(0)
   const [ninos, setNinos] = useState(0)
   const [adolescentes, setAdolescentes] = useState(0)
+  const [simpatizantesCount, setSimpatizantesCount] = useState(0)
   const [editingCounter, setEditingCounter] = useState<string | null>(null)
   const [tempValue, setTempValue] = useState("")
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -39,7 +40,8 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
   // Campos editables
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0])
   const [tipoServicio, setTipoServicio] = useState("dominical")
-  const [nombreUjier, setNombreUjier] = useState("")
+  const [ujierSeleccionado, setUjierSeleccionado] = useState("")
+  const [ujierPersonalizado, setUjierPersonalizado] = useState("")
 
   const servicios = [
     { value: "dominical", label: "Dominical" },
@@ -47,6 +49,28 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
     { value: "dorcas", label: "Hermanas Dorcas" },
     { value: "evangelismo", label: "Evangelismo" },
     { value: "jovenes", label: "Jóvenes" },
+  ]
+
+  const ujieres = [
+    "Wilmar Rojas",
+    "Juan Caldera",
+    "Joaquin Velez",
+    "Yarissa Rojas",
+    "Cristian Gomez",
+    "Hector Gaviria",
+    "Ivan Caro",
+    "Jhon echavarria",
+    "Karen Cadavid",
+    "Carolina Monsalve",
+    "Marta Verona",
+    "Nicolas Gömez",
+    "Oraliz Fernåndez",
+    "Santiago Graciano",
+    "Suri Vélez",
+    "Wilmar Vélez",
+    "Diana Suarez",
+    "José perdomo",
+    "Carolina Caro",
   ]
 
   const handleCounterEdit = (type: string, value: number) => {
@@ -68,6 +92,9 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
         break
       case "adolescentes":
         setAdolescentes(newValue)
+        break
+      case "simpatizantes":
+        setSimpatizantesCount(newValue)
         break
     }
     setEditingCounter(null)
@@ -109,11 +136,21 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
     setNewSimpatizante({ nombre: "", telefono: "", notas: "" })
   }
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Nombre copiado al portapapeles")
+    })
+  }
+
   const handleSaveConteo = () => {
+    const nombreUjier = ujierSeleccionado === "otro" ? ujierPersonalizado : ujierSeleccionado
+
     if (!nombreUjier.trim()) {
-      alert("Por favor ingrese el nombre del ujier")
+      alert("Por favor seleccione o ingrese el nombre del ujier")
       return
     }
+
+    const totalSimpatizantes = simpatizantesCount + simpatizantesDelDia.length
 
     const conteoData = {
       fecha,
@@ -123,7 +160,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
       hermanas,
       ninos,
       adolescentes,
-      simpatizantes: simpatizantesDelDia.length,
+      simpatizantes: totalSimpatizantes,
       simpatizantesAsistieron: simpatizantesDelDia.map((s) => ({ id: s.id, nombre: s.nombre })),
     }
 
@@ -134,10 +171,12 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
     setHermanas(0)
     setNinos(0)
     setAdolescentes(0)
+    setSimpatizantesCount(0)
     setSimpatizantesDelDia([])
     setFecha(new Date().toISOString().split("T")[0])
     setTipoServicio("dominical")
-    setNombreUjier("")
+    setUjierSeleccionado("")
+    setUjierPersonalizado("")
 
     alert("Conteo guardado exitosamente")
   }
@@ -147,7 +186,8 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
       s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) && !simpatizantesDelDia.find((sd) => sd.id === s.id),
   )
 
-  const total = hermanos + hermanas + ninos + adolescentes + simpatizantesDelDia.length
+  const totalSimpatizantes = simpatizantesCount + simpatizantesDelDia.length
+  const total = hermanos + hermanas + ninos + adolescentes + totalSimpatizantes
 
   const counters = [
     { key: "hermanos", label: "Hermanos", value: hermanos, setter: setHermanos, color: "bg-slate-600" },
@@ -159,6 +199,13 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
       value: adolescentes,
       setter: setAdolescentes,
       color: "bg-purple-600",
+    },
+    {
+      key: "simpatizantes",
+      label: "Simpatizantes",
+      value: simpatizantesCount,
+      setter: setSimpatizantesCount,
+      color: "bg-emerald-600",
     },
   ]
 
@@ -204,12 +251,41 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
                 <User className="w-3 h-3" />
                 Nombre del Ujier
               </label>
-              <Input
-                placeholder="Ingrese su nombre"
-                value={nombreUjier}
-                onChange={(e) => setNombreUjier(e.target.value)}
-                className="h-9 text-sm"
-              />
+              <Select value={ujierSeleccionado} onValueChange={setUjierSeleccionado}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Seleccione un ujier" />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {ujieres.map((ujier) => (
+                    <SelectItem key={ujier} value={ujier} className="flex items-center justify-between">
+                      <div className="flex items-center justify-between w-full">
+                        <span>{ujier}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            copyToClipboard(ujier)
+                          }}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="otro">Otro (escribir nombre)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {ujierSeleccionado === "otro" && (
+                <Input
+                  placeholder="Escriba el nombre del ujier"
+                  value={ujierPersonalizado}
+                  onChange={(e) => setUjierPersonalizado(e.target.value)}
+                  className="h-9 text-sm mt-2"
+                />
+              )}
             </div>
           </div>
 
@@ -217,9 +293,14 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
             <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
               {servicios.find((s) => s.value === tipoServicio)?.label}
             </Badge>
-            {nombreUjier && (
+            {ujierSeleccionado && ujierSeleccionado !== "otro" && (
               <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
-                {nombreUjier}
+                {ujierSeleccionado}
+              </Badge>
+            )}
+            {ujierSeleccionado === "otro" && ujierPersonalizado && (
+              <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+                {ujierPersonalizado}
               </Badge>
             )}
           </div>
@@ -243,6 +324,11 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 ${counter.color} rounded-full`}></div>
                   <span className="font-medium text-gray-800">{counter.label}</span>
+                  {counter.key === "simpatizantes" && simpatizantesDelDia.length > 0 && (
+                    <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                      +{simpatizantesDelDia.length} con nombre
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -268,7 +354,9 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
-                      <span className="text-xl font-semibold w-8 text-center">{counter.value}</span>
+                      <span className="text-xl font-semibold w-8 text-center">
+                        {counter.key === "simpatizantes" ? totalSimpatizantes : counter.value}
+                      </span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -293,21 +381,6 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
             </CardContent>
           </Card>
         ))}
-
-        {/* Simpatizantes Counter */}
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-emerald-600 rounded-full"></div>
-                <span className="font-medium text-gray-800">Simpatizantes</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-semibold">{simpatizantesDelDia.length}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Simpatizantes del día */}
@@ -316,7 +389,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Simpatizantes que Asistieron Hoy ({simpatizantesDelDia.length})
+              Simpatizantes con Nombre ({simpatizantesDelDia.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -345,7 +418,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
         <DialogTrigger asChild>
           <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl py-3 shadow-lg">
             <UserPlus className="w-5 h-5 mr-2" />
-            Agregar Simpatizante
+            Agregar Simpatizante con Nombre
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
