@@ -1,6 +1,5 @@
 "use client"
 
-// hooks/use-data-sync.ts
 import { useState, useEffect, useCallback } from "react"
 import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -169,14 +168,34 @@ export function useDataSync() {
   const [simpatizantes, setSimpatizantes] = useState<any[]>(initialSimpatizantes)
   const [miembros, setMiembros] = useState<any[]>(initialMiembros)
   const [historial, setHistorial] = useState<any[]>(initialHistorial)
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [isOnline, setIsOnline] = useState(true) // Default to true for SSR
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthReady, setIsAuthReady] = useState(false)
 
+  // Initialize online status only in browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine)
+      
+      const handleOnline = () => setIsOnline(true)
+      const handleOffline = () => setIsOnline(false)
+      
+      window.addEventListener("online", handleOnline)
+      window.addEventListener("offline", handleOffline)
+      
+      return () => {
+        window.removeEventListener("online", handleOnline)
+        window.removeEventListener("offline", handleOffline)
+      }
+    }
+  }, [])
+
   // --- Local Storage (IndexedDB with localforage) ---
   const saveLocalData = useCallback(async (key: string, data: any) => {
+    if (typeof window === "undefined") return // Skip during SSR
+    
     try {
       await localforage.setItem(key, data)
       console.log(`Data for ${key} saved locally.`)
@@ -185,15 +204,65 @@ export function useDataSync() {
     }
   }, [])
 
-  const loadLocalData = useCallback(async (key: string, fallback: any[]) => {
+  const loadLocalData = useCallback(async (key: string) => {
+    if (typeof window === "undefined") return null // Skip during SSR
+    
     try {
       const data = await localforage.getItem(key)
-      return data || fallback
+      console.log(`Data for ${key} loaded from local storage.`)
+      return data
     } catch (error) {
       console.error(`Error loading ${key} from local storage:`, error)
-      return fallback
+      return null
     }
   }, [])
+
+  // Auth state listener
+  useEffect(() => {
+    if (typeof window === "undefined") return // Skip during SSR
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth state changed:", user ? "signed in" : "signed out")
+      setIsAuthReady(true)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Load initial data
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setIsLoading(false)
+      return
+    }
+
+    const loadData = async () => {
+      try {
+        // Load from local storage first
+        const localSimpatizantes = await loadLocalData("simpatizantes")
+        const localMiembros = await loadLocalData("miembros")
+        const localHistorial = await loadLocalData("historial")
+
+        if (localSimpatizantes) setSimpatizantes(localSimpatizantes)
+        if (localMiembros) setMiembros(localMiembros)
+        if (localHistorial) setHistorial(localHistorial)
+
+        setIsLoading(false)
+
+        // Then try to sync with Firebase if online and auth is ready
+        if (isOnline && isAuthReady) {
+          await syncWithFirebase()
+        }
+      } catch (error) {
+        console.error("Error loading initial data:", error)
+        setIsLoading(false)
+      }
+    }
+
+    if (isAuthReady) {
+      loadData()
+    }
+  }, [isAuthReady, isOnline, loadLocalData])
 
   // --- Firebase Synchronization ---
   const syncCollection = useCallback(
@@ -347,7 +416,7 @@ export function useDataSync() {
         fechaRegistro: new Date().toISOString().split("T")[0],
       }
       setSimpatizantes((prev) => [...prev, simpatizanteCompleto])
-      await saveLocalData("simpatizantes", [...simpatizantes, simpatizanteCompleto])
+      await saveLocalData("simpatizantes", [...simpatizantes, simpatianteCompleto])
 
       try {
         // Extract id before sending to Firestore
