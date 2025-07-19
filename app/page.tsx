@@ -5,139 +5,39 @@ import { ConteoScreen } from "@/components/conteo-screen"
 import { HistorialScreen } from "@/components/historial-screen"
 import { SimpatizantesScreen } from "@/components/simpatizantes-screen"
 import { SimpatizanteDetailScreen } from "@/components/simpatizante-detail-screen"
+import { MiembrosScreen } from "@/components/miembros-screen"
+import { MiembroDetailScreen } from "@/components/miembro-detail-screen"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { AdminPasswordInput } from "@/components/admin-password-input"
-import { Lock } from "lucide-react"
-
-// Estado inicial de simpatizantes
-const initialSimpatizantes = [
-  {
-    id: 1,
-    nombre: "Ana López",
-    telefono: "+34 612 345 678",
-    notas: "Interesada en estudios bíblicos",
-    fechaRegistro: "2024-01-07",
-  },
-  {
-    id: 2,
-    nombre: "Carlos Mendoza",
-    telefono: "+34 623 456 789",
-    notas: "Vino con su familia",
-    fechaRegistro: "2024-01-03",
-  },
-  {
-    id: 3,
-    nombre: "María Fernández",
-    telefono: "+34 634 567 890",
-    notas: "Primera visita",
-    fechaRegistro: "2023-12-31",
-  },
-  {
-    id: 4,
-    nombre: "José Ramírez",
-    telefono: "+34 645 678 901",
-    notas: "Conoce a hermano Pedro",
-    fechaRegistro: "2023-12-24",
-  },
-  {
-    id: 5,
-    nombre: "Laura Sánchez",
-    telefono: "+34 656 789 012",
-    notas: "Interesada en bautismo",
-    fechaRegistro: "2023-12-20",
-  },
-]
-
-// Historial inicial con simpatizantes específicos
-const initialHistorial = [
-  {
-    id: 1,
-    fecha: "2024-01-07",
-    servicio: "Dominical",
-    ujier: "Wilmar Rojas",
-    hermanos: 45,
-    hermanas: 52,
-    ninos: 18,
-    adolescentes: 12,
-    simpatizantes: 2,
-    total: 129,
-    simpatizantesAsistieron: [
-      { id: 1, nombre: "Ana López" },
-      { id: 2, nombre: "Carlos Mendoza" },
-    ],
-  },
-  {
-    id: 2,
-    fecha: "2024-01-03",
-    servicio: "Oración y Enseñanza",
-    ujier: "Juan Caldera",
-    hermanos: 32,
-    hermanas: 38,
-    ninos: 8,
-    adolescentes: 6,
-    simpatizantes: 1,
-    total: 85,
-    simpatizantesAsistieron: [{ id: 3, nombre: "María Fernández" }],
-  },
-  {
-    id: 3,
-    fecha: "2023-12-31",
-    servicio: "Dominical",
-    ujier: "Joaquin Velez",
-    hermanos: 48,
-    hermanas: 55,
-    ninos: 22,
-    adolescentes: 15,
-    simpatizantes: 3,
-    total: 143,
-    simpatizantesAsistieron: [
-      { id: 1, nombre: "Ana López" },
-      { id: 4, nombre: "José Ramírez" },
-      { id: 5, nombre: "Laura Sánchez" },
-    ],
-  },
-]
+import { Lock, WifiOff, Cloud, CheckCircle, XCircle } from "lucide-react"
+import { useDataSync } from "@/hooks/use-data-sync" // Import the new hook
 
 export default function UjierApp() {
+  const {
+    simpatizantes,
+    miembros,
+    historial,
+    addSimpatizante,
+    updateSimpatizante,
+    addMiembro,
+    updateMiembro,
+    saveConteo,
+    isOnline,
+    isSyncing,
+    syncError,
+    isLoading,
+  } = useDataSync() // Use the data sync hook
+
   const [currentScreen, setCurrentScreen] = useState("conteo")
   const [selectedSimpatizante, setSelectedSimpatizante] = useState<any>(null)
-  const [simpatizantes, setSimpatizantes] = useState(initialSimpatizantes)
-  const [historial, setHistorial] = useState(initialHistorial)
+  const [selectedMiembro, setSelectedMiembro] = useState<any>(null)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
   const [showAdminDialog, setShowAdminDialog] = useState(false)
-
-  const addSimpatizante = (nuevoSimpatizante: any) => {
-    const newId = Math.max(...simpatizantes.map((s) => s.id)) + 1
-    const simpatizanteCompleto = {
-      ...nuevoSimpatizante,
-      id: newId,
-      fechaRegistro: new Date().toISOString().split("T")[0],
-    }
-    setSimpatizantes((prev) => [...prev, simpatizanteCompleto])
-    return simpatizanteCompleto
-  }
-
-  const updateSimpatizante = (id: number, datosActualizados: any) => {
-    setSimpatizantes((prev) => prev.map((s) => (s.id === id ? { ...s, ...datosActualizados } : s)))
-  }
-
-  const saveConteo = (conteoData: any) => {
-    const newId = Math.max(...historial.map((h) => h.id), 0) + 1
-    const nuevoRegistro = {
-      ...conteoData,
-      id: newId,
-      total:
-        conteoData.hermanos +
-        conteoData.hermanas +
-        conteoData.ninos +
-        conteoData.adolescentes +
-        conteoData.simpatizantes,
-    }
-    setHistorial((prev) => [nuevoRegistro, ...prev])
-  }
+  const [requestedScreen, setRequestedScreen] = useState("")
 
   const handleScreenChange = (screen: string) => {
-    if (screen === "historial" && !isAdminAuthenticated) {
+    if ((screen === "historial" || screen === "miembros") && !isAdminAuthenticated) {
+      setRequestedScreen(screen)
       setShowAdminDialog(true)
       return
     }
@@ -148,7 +48,13 @@ export default function UjierApp() {
     switch (currentScreen) {
       case "conteo":
         return (
-          <ConteoScreen simpatizantes={simpatizantes} onAddSimpatizante={addSimpatizante} onSaveConteo={saveConteo} />
+          <ConteoScreen
+            simpatizantes={simpatizantes}
+            miembros={miembros}
+            onAddSimpatizante={addSimpatizante}
+            onAddMiembro={addMiembro}
+            onSaveConteo={saveConteo}
+          />
         )
       case "historial":
         return <HistorialScreen historial={historial} />
@@ -160,6 +66,8 @@ export default function UjierApp() {
             onAddSimpatizante={addSimpatizante}
           />
         )
+      case "miembros":
+        return <MiembrosScreen miembros={miembros} onSelectMiembro={setSelectedMiembro} onAddMiembro={addMiembro} />
       case "simpatizante-detail":
         return (
           <SimpatizanteDetailScreen
@@ -168,9 +76,23 @@ export default function UjierApp() {
             onUpdateSimpatizante={updateSimpatizante}
           />
         )
+      case "miembro-detail":
+        return (
+          <MiembroDetailScreen
+            miembro={selectedMiembro}
+            onBack={() => setCurrentScreen("miembros")}
+            onUpdateMiembro={updateMiembro}
+          />
+        )
       default:
         return (
-          <ConteoScreen simpatizantes={simpatizantes} onAddSimpatizante={addSimpatizante} onSaveConteo={saveConteo} />
+          <ConteoScreen
+            simpatizantes={simpatizantes}
+            miembros={miembros}
+            onAddSimpatizante={addSimpatizante}
+            onAddMiembro={addMiembro}
+            onSaveConteo={saveConteo}
+          />
         )
     }
   }
@@ -180,9 +102,55 @@ export default function UjierApp() {
     setCurrentScreen("simpatizante-detail")
   }
 
+  const handleMiembroSelect = (miembro: any) => {
+    setSelectedMiembro(miembro)
+    setCurrentScreen("miembro-detail")
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
+        <div className="text-center text-gray-600">
+          <Cloud className="w-12 h-12 mx-auto animate-pulse text-slate-500" />
+          <p className="mt-4 text-lg font-semibold">Cargando datos...</p>
+          <p className="text-sm text-gray-500">Esto puede tardar un momento.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-sm mx-auto bg-gradient-to-b from-slate-50 to-gray-100 min-h-screen">
-      <div className="flex flex-col min-h-screen">
+      {/* Sync Status Indicator */}
+      <div className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/90 backdrop-blur-sm p-2 text-center text-xs text-gray-600 flex items-center justify-center gap-2 shadow-sm z-50">
+        {isOnline ? (
+          isSyncing ? (
+            <>
+              <Cloud className="w-4 h-4 animate-pulse text-blue-500" />
+              <span className="text-blue-600">Sincronizando...</span>
+            </>
+          ) : syncError ? (
+            <>
+              <XCircle className="w-4 h-4 text-red-500" />
+              <span className="text-red-600">Error de sincronización</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-green-600">Online y sincronizado</span>
+            </>
+          )
+        ) : (
+          <>
+            <WifiOff className="w-4 h-4 text-orange-500" />
+            <span className="text-orange-600">Offline (guardando localmente)</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex flex-col min-h-screen pt-10">
+        {" "}
+        {/* Add padding-top to account for status bar */}
         <div className="flex-1 pb-20">
           {currentScreen === "simpatizantes" ? (
             <SimpatizantesScreen
@@ -190,11 +158,13 @@ export default function UjierApp() {
               onSelectSimpatizante={handleSimpatizanteSelect}
               onAddSimpatizante={addSimpatizante}
             />
+          ) : currentScreen === "miembros" ? (
+            <MiembrosScreen miembros={miembros} onSelectMiembro={handleMiembroSelect} onAddMiembro={addMiembro} />
           ) : (
             renderScreen()
           )}
         </div>
-        {currentScreen !== "simpatizante-detail" && (
+        {currentScreen !== "simpatizante-detail" && currentScreen !== "miembro-detail" && (
           <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm z-50">
             <BottomNavigation
               currentScreen={currentScreen}
@@ -213,16 +183,20 @@ export default function UjierApp() {
                 <Lock className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800">Acceso de Administrador</h3>
-              <p className="text-sm text-gray-600 mt-2">Ingrese la clave para acceder al historial</p>
+              <p className="text-sm text-gray-600 mt-2">Ingrese la clave para acceder a esta sección</p>
             </div>
 
             <AdminPasswordInput
               onSuccess={() => {
                 setIsAdminAuthenticated(true)
                 setShowAdminDialog(false)
-                setCurrentScreen("historial")
+                setCurrentScreen(requestedScreen)
+                setRequestedScreen("")
               }}
-              onCancel={() => setShowAdminDialog(false)}
+              onCancel={() => {
+                setShowAdminDialog(false)
+                setRequestedScreen("")
+              }}
             />
           </div>
         </div>

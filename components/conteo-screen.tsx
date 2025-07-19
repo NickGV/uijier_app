@@ -5,17 +5,40 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Minus, Edit3, UserPlus, Calendar, User, Clock, Search, X, Save, Users, Trash2, Copy } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Plus,
+  Minus,
+  Edit3,
+  UserPlus,
+  Calendar,
+  User,
+  Clock,
+  Search,
+  X,
+  Save,
+  Users,
+  Trash2,
+  Copy,
+  Eye,
+} from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ConteoScreenProps {
   simpatizantes: any[]
+  miembros: any[]
   onAddSimpatizante: (simpatizante: any) => any
+  onAddMiembro: (miembro: any) => any
   onSaveConteo: (conteo: any) => void
 }
 
-export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }: ConteoScreenProps) {
+export function ConteoScreen({
+  simpatizantes,
+  miembros,
+  onAddSimpatizante,
+  onAddMiembro,
+  onSaveConteo,
+}: ConteoScreenProps) {
   const [hermanos, setHermanos] = useState(0)
   const [hermanas, setHermanas] = useState(0)
   const [ninos, setNinos] = useState(0)
@@ -42,6 +65,19 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
   const [tipoServicio, setTipoServicio] = useState("dominical")
   const [ujierSeleccionado, setUjierSeleccionado] = useState("")
   const [ujierPersonalizado, setUjierPersonalizado] = useState("")
+
+  // Estados para miembros del día por categoría
+  const [hermanosDelDia, setHermanosDelDia] = useState<any[]>([])
+  const [hermanasDelDia, setHermanasDelDia] = useState<any[]>([])
+  const [ninosDelDia, setNinosDelDia] = useState<any[]>([])
+  const [adolescentesDelDia, setAdolescentesDelDia] = useState<any[]>([])
+  const [showAsistentesDialog, setShowAsistentesDialog] = useState(false)
+  const [showMiembrosDialog, setShowMiembrosDialog] = useState(false)
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("")
+
+  const [modoConsecutivo, setModoConsecutivo] = useState(false)
+  const [datosEvangelismo, setDatosEvangelismo] = useState<any>(null)
+  const [showContinuarDialog, setShowContinuarDialog] = useState(false)
 
   const servicios = [
     { value: "dominical", label: "Dominical" },
@@ -142,6 +178,55 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
     })
   }
 
+  const selectMiembro = (miembro: any, categoria: string) => {
+    const setterMap = {
+      hermanos: setHermanosDelDia,
+      hermanas: setHermanasDelDia,
+      ninos: setNinosDelDia,
+      adolescentes: setAdolescentesDelDia,
+    }
+
+    const currentList =
+      {
+        hermanos: hermanosDelDia,
+        hermanas: hermanasDelDia,
+        ninos: ninosDelDia,
+        adolescentes: adolescentesDelDia,
+      }[categoria] || []
+
+    if (currentList.find((m: any) => m.id === miembro.id)) {
+      alert("Este miembro ya fue agregado hoy")
+      return
+    }
+
+    setterMap[categoria]?.((prev: any[]) => [...prev, miembro])
+    setShowMiembrosDialog(false)
+  }
+
+  const removeMiembroDelDia = (miembroId: number, categoria: string) => {
+    const setterMap = {
+      hermanos: setHermanosDelDia,
+      hermanas: setHermanasDelDia,
+      ninos: setNinosDelDia,
+      adolescentes: setAdolescentesDelDia,
+    }
+
+    setterMap[categoria]?.((prev: any[]) => prev.filter((m: any) => m.id !== miembroId))
+  }
+
+  const openMiembrosDialog = (categoria: string) => {
+    setCategoriaSeleccionada(categoria)
+    setShowMiembrosDialog(true)
+  }
+
+  const getMiembrosPorCategoria = (categoria: string) => {
+    return miembros.filter((m) => {
+      if (categoria === "ninos") return m.categoria === "nino"
+      if (categoria === "adolescentes") return m.categoria === "adolescente"
+      return m.categoria === categoria.slice(0, -1) // remove 's' from end
+    })
+  }
+
   const handleSaveConteo = () => {
     const nombreUjier = ujierSeleccionado === "otro" ? ujierPersonalizado : ujierSeleccionado
 
@@ -151,34 +236,87 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
     }
 
     const totalSimpatizantes = simpatizantesCount + simpatizantesDelDia.length
+    const totalHermanos = hermanos + hermanosDelDia.length
+    const totalHermanas = hermanas + hermanasDelDia.length
+    const totalNinos = ninos + ninosDelDia.length
+    const totalAdolescentes = adolescentes + adolescentesDelDia.length
 
     const conteoData = {
       fecha,
       servicio: servicios.find((s) => s.value === tipoServicio)?.label || tipoServicio,
       ujier: nombreUjier,
-      hermanos,
-      hermanas,
-      ninos,
-      adolescentes,
+      hermanos: totalHermanos,
+      hermanas: totalHermanas,
+      ninos: totalNinos,
+      adolescentes: totalAdolescentes,
       simpatizantes: totalSimpatizantes,
       simpatizantesAsistieron: simpatizantesDelDia.map((s) => ({ id: s.id, nombre: s.nombre })),
+      miembrosAsistieron: {
+        hermanos: hermanosDelDia.map((m) => ({ id: m.id, nombre: m.nombre })),
+        hermanas: hermanasDelDia.map((m) => ({ id: m.id, nombre: m.nombre })),
+        ninos: ninosDelDia.map((m) => ({ id: m.id, nombre: m.nombre })),
+        adolescentes: adolescentesDelDia.map((m) => ({ id: m.id, nombre: m.nombre })),
+      },
     }
 
-    onSaveConteo(conteoData)
+    // Verificar si es domingo y evangelismo (y no estamos en modo consecutivo)
+    const fechaObj = new Date(fecha)
+    const esDomingo = fechaObj.getDay() === 0
+    const esEvangelismo = tipoServicio === "evangelismo"
 
-    // Resetear formulario
+    if (esDomingo && esEvangelismo && !modoConsecutivo) {
+      // Guardar datos del evangelismo y preguntar si continuar
+      onSaveConteo(conteoData)
+      setDatosEvangelismo(conteoData)
+      setShowContinuarDialog(true)
+      return
+    }
+
+    if (modoConsecutivo) {
+      // Estamos guardando el dominical después del evangelismo
+      onSaveConteo(conteoData)
+      resetearFormulario()
+      setModoConsecutivo(false)
+      setDatosEvangelismo(null)
+      alert("Conteo dominical guardado exitosamente")
+    } else {
+      // Guardado normal
+      onSaveConteo(conteoData)
+      resetearFormulario()
+      alert("Conteo guardado exitosamente")
+    }
+  }
+
+  const resetearFormulario = () => {
     setHermanos(0)
     setHermanas(0)
     setNinos(0)
     setAdolescentes(0)
     setSimpatizantesCount(0)
     setSimpatizantesDelDia([])
+    setHermanosDelDia([])
+    setHermanasDelDia([])
+    setNinosDelDia([])
+    setAdolescentesDelDia([])
     setFecha(new Date().toISOString().split("T")[0])
     setTipoServicio("dominical")
     setUjierSeleccionado("")
     setUjierPersonalizado("")
+  }
 
-    alert("Conteo guardado exitosamente")
+  const continuarConDominical = () => {
+    setModoConsecutivo(true)
+    setTipoServicio("dominical")
+    setShowContinuarDialog(false)
+    // Los contadores y listas se mantienen como están
+    alert("Continuando con el servicio dominical. Los asistentes del evangelismo se mantienen como base.")
+  }
+
+  const noContinarConDominical = () => {
+    setShowContinuarDialog(false)
+    setDatosEvangelismo(null)
+    resetearFormulario()
+    alert("Conteo de evangelismo guardado exitosamente")
   }
 
   const filteredSimpatizantes = simpatizantes.filter(
@@ -190,15 +328,41 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
   const total = hermanos + hermanas + ninos + adolescentes + totalSimpatizantes
 
   const counters = [
-    { key: "hermanos", label: "Hermanos", value: hermanos, setter: setHermanos, color: "bg-slate-600" },
-    { key: "hermanas", label: "Hermanas", value: hermanas, setter: setHermanas, color: "bg-rose-600" },
-    { key: "ninos", label: "Niños", value: ninos, setter: setNinos, color: "bg-amber-600" },
+    {
+      key: "hermanos",
+      label: "Hermanos",
+      value: hermanos,
+      setter: setHermanos,
+      color: "bg-slate-600",
+      miembrosDelDia: hermanosDelDia,
+      categoria: "hermanos",
+    },
+    {
+      key: "hermanas",
+      label: "Hermanas",
+      value: hermanas,
+      setter: setHermanas,
+      color: "bg-rose-600",
+      miembrosDelDia: hermanasDelDia,
+      categoria: "hermanas",
+    },
+    {
+      key: "ninos",
+      label: "Niños",
+      value: ninos,
+      setter: setNinos,
+      color: "bg-amber-600",
+      miembrosDelDia: ninosDelDia,
+      categoria: "ninos",
+    },
     {
       key: "adolescentes",
       label: "Adolescentes",
       value: adolescentes,
       setter: setAdolescentes,
       color: "bg-purple-600",
+      miembrosDelDia: adolescentesDelDia,
+      categoria: "adolescentes",
     },
     {
       key: "simpatizantes",
@@ -206,6 +370,7 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
       value: simpatizantesCount,
       setter: setSimpatizantesCount,
       color: "bg-emerald-600",
+      categoria: "simpatizantes", // Agregar esta línea
     },
   ]
 
@@ -307,6 +472,21 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
         </CardHeader>
       </Card>
 
+      {modoConsecutivo && datosEvangelismo && (
+        <Card className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-0 shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-5 h-5" />
+              <span className="font-semibold">Modo Consecutivo: Dominical</span>
+            </div>
+            <div className="text-emerald-100 text-sm">Base del Evangelismo: {datosEvangelismo.total} asistentes</div>
+            <div className="text-emerald-200 text-xs mt-1">
+              Los contadores actuales se sumarán a la base del evangelismo
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Total Counter */}
       <Card className="bg-gradient-to-r from-slate-700 to-slate-800 text-white border-0 shadow-lg">
         <CardContent className="p-6 text-center">
@@ -324,13 +504,39 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 ${counter.color} rounded-full`}></div>
                   <span className="font-medium text-gray-800">{counter.label}</span>
-                  {counter.key === "simpatizantes" && simpatizantesDelDia.length > 0 && (
-                    <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                      +{simpatizantesDelDia.length} con nombre
-                    </Badge>
-                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {counter.categoria && (
+                    <div className="relative">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-8 h-8 p-0 rounded-full bg-transparent border-gray-300"
+                        onClick={() =>
+                          counter.categoria === "simpatizantes"
+                            ? setShowAddDialog(true)
+                            : openMiembrosDialog(counter.categoria)
+                        }
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </Button>
+                      {/* Indicador de cantidad */}
+                      {((counter.categoria === "hermanos" && hermanosDelDia.length > 0) ||
+                        (counter.categoria === "hermanas" && hermanasDelDia.length > 0) ||
+                        (counter.categoria === "ninos" && ninosDelDia.length > 0) ||
+                        (counter.categoria === "adolescentes" && adolescentesDelDia.length > 0) ||
+                        (counter.categoria === "simpatizantes" && simpatizantesDelDia.length > 0)) && (
+                        <div className="absolute -top-2 -right-1 bg-emerald-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                          {counter.categoria === "hermanos" && hermanosDelDia.length}
+                          {counter.categoria === "hermanas" && hermanasDelDia.length}
+                          {counter.categoria === "ninos" && ninosDelDia.length}
+                          {counter.categoria === "adolescentes" && adolescentesDelDia.length}
+                          {counter.categoria === "simpatizantes" && simpatizantesDelDia.length}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -355,7 +561,11 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
                   ) : (
                     <div className="flex items-center gap-1">
                       <span className="text-xl font-semibold w-8 text-center">
-                        {counter.key === "simpatizantes" ? totalSimpatizantes : counter.value}
+                        {counter.key === "simpatizantes"
+                          ? totalSimpatizantes
+                          : counter.miembrosDelDia
+                            ? counter.value + counter.miembrosDelDia.length
+                            : counter.value}
                       </span>
                       <Button
                         variant="ghost"
@@ -382,6 +592,28 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
           </Card>
         ))}
       </div>
+
+      {/* Ver Lista Asistentes Button */}
+      {(hermanosDelDia.length > 0 ||
+        hermanasDelDia.length > 0 ||
+        ninosDelDia.length > 0 ||
+        adolescentesDelDia.length > 0 ||
+        simpatizantesDelDia.length > 0) && (
+        <Button
+          variant="outline"
+          className="w-full bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl py-3"
+          onClick={() => setShowAsistentesDialog(true)}
+        >
+          <Eye className="w-5 h-5 mr-2" />
+          Ver Lista de Asistentes (
+          {hermanosDelDia.length +
+            hermanasDelDia.length +
+            ninosDelDia.length +
+            adolescentesDelDia.length +
+            simpatizantesDelDia.length}
+          )
+        </Button>
+      )}
 
       {/* Simpatizantes del día */}
       {simpatizantesDelDia.length > 0 && (
@@ -413,14 +645,8 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
         </Card>
       )}
 
-      {/* Add Simpatizante Button */}
+      {/* Add Simpatizante Dialog (no longer triggered by a dedicated button) */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogTrigger asChild>
-          <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl py-3 shadow-lg">
-            <UserPlus className="w-5 h-5 mr-2" />
-            Agregar Simpatizante con Nombre
-          </Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
@@ -524,14 +750,189 @@ export function ConteoScreen({ simpatizantes, onAddSimpatizante, onSaveConteo }:
         </DialogContent>
       </Dialog>
 
+      {/* Dialog para seleccionar miembros */}
+      <Dialog open={showMiembrosDialog} onOpenChange={setShowMiembrosDialog}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Seleccionar {categoriaSeleccionada}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {getMiembrosPorCategoria(categoriaSeleccionada).map((miembro) => (
+              <div
+                key={miembro.id}
+                className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                onClick={() => selectMiembro(miembro, categoriaSeleccionada)}
+              >
+                <div className="font-medium text-sm">{miembro.nombre}</div>
+                <div className="text-xs text-gray-500">{miembro.telefono}</div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para ver lista de asistentes */}
+      <Dialog open={showAsistentesDialog} onOpenChange={setShowAsistentesDialog}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lista de Asistentes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {hermanosDelDia.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-slate-700 mb-2">Hermanos ({hermanosDelDia.length})</h4>
+                {hermanosDelDia.map((miembro) => (
+                  <div key={miembro.id} className="flex items-center justify-between p-2 bg-slate-50 rounded mb-1">
+                    <span className="text-sm">{miembro.nombre}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeMiembroDelDia(miembro.id, "hermanos")}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {hermanasDelDia.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-rose-700 mb-2">Hermanas ({hermanasDelDia.length})</h4>
+                {hermanasDelDia.map((miembro) => (
+                  <div key={miembro.id} className="flex items-center justify-between p-2 bg-rose-50 rounded mb-1">
+                    <span className="text-sm">{miembro.nombre}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeMiembroDelDia(miembro.id, "hermanas")}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {ninosDelDia.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-amber-700 mb-2">Niños ({ninosDelDia.length})</h4>
+                {ninosDelDia.map((miembro) => (
+                  <div key={miembro.id} className="flex items-center justify-between p-2 bg-amber-50 rounded mb-1">
+                    <span className="text-sm">{miembro.nombre}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeMiembroDelDia(miembro.id, "ninos")}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {adolescentesDelDia.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-purple-700 mb-2">Adolescentes ({adolescentesDelDia.length})</h4>
+                {adolescentesDelDia.map((miembro) => (
+                  <div key={miembro.id} className="flex items-center justify-between p-2 bg-purple-50 rounded mb-1">
+                    <span className="text-sm">{miembro.nombre}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeMiembroDelDia(miembro.id, "adolescentes")}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {simpatizantesDelDia.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-emerald-700 mb-2">Simpatizantes ({simpatizantesDelDia.length})</h4>
+                {simpatizantesDelDia.map((simpatizante) => (
+                  <div
+                    key={simpatizante.id}
+                    className="flex items-center justify-between p-2 bg-emerald-50 rounded mb-1"
+                  >
+                    <span className="text-sm">{simpatizante.nombre}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeSimpatizanteDelDia(simpatizante.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Save Button */}
       <Button
         onClick={handleSaveConteo}
         className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-4 shadow-lg text-lg font-semibold mb-4"
       >
         <Save className="w-5 h-5 mr-2" />
-        Guardar Conteo de Asistencia
+        {modoConsecutivo ? "Guardar Conteo Dominical" : "Guardar Conteo de Asistencia"}
       </Button>
+
+      {/* Dialog para continuar con dominical */}
+      {showContinuarDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Servicio Dominical</h3>
+              <p className="text-sm text-gray-600 mt-2">
+                El conteo del evangelismo ha sido guardado. ¿Desea continuar con el conteo del servicio dominical
+                manteniendo los asistentes actuales como base?
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={continuarConDominical}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl py-3"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Sí, Continuar con Dominical
+              </Button>
+              <Button
+                variant="outline"
+                onClick={noContinarConDominical}
+                className="w-full bg-transparent rounded-xl py-3"
+              >
+                No, Solo Evangelismo
+              </Button>
+            </div>
+
+            {datosEvangelismo && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-600 mb-1">Resumen Evangelismo:</div>
+                <div className="text-sm font-medium text-gray-800">Total: {datosEvangelismo.total} asistentes</div>
+                <div className="text-xs text-gray-500">
+                  H: {datosEvangelismo.hermanos} | M: {datosEvangelismo.hermanas} | N: {datosEvangelismo.ninos} | A:{" "}
+                  {datosEvangelismo.adolescentes} | S: {datosEvangelismo.simpatizantes}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

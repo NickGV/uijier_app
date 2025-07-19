@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Filter, TrendingUp, Eye, Users, Download, FileText, BarChart3 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Calendar, Filter, TrendingUp, Eye, Users, Download, FileText, BarChart3, CalendarDays } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface HistorialScreenProps {
@@ -14,13 +15,30 @@ interface HistorialScreenProps {
 export function HistorialScreen({ historial }: HistorialScreenProps) {
   const [filtroServicio, setFiltroServicio] = useState("todos")
   const [filtroUjier, setFiltroUjier] = useState("todos")
+  const [fechaInicio, setFechaInicio] = useState("")
+  const [fechaFin, setFechaFin] = useState("")
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
 
   const filteredData = historial.filter((record) => {
     const servicioMatch =
       filtroServicio === "todos" || record.servicio.toLowerCase().includes(filtroServicio.toLowerCase())
     const ujierMatch = filtroUjier === "todos" || record.ujier === filtroUjier
-    return servicioMatch && ujierMatch
+
+    // Filtro por rango de fechas
+    let fechaMatch = true
+    if (fechaInicio || fechaFin) {
+      const recordDate = new Date(record.fecha)
+      if (fechaInicio) {
+        const startDate = new Date(fechaInicio)
+        fechaMatch = fechaMatch && recordDate >= startDate
+      }
+      if (fechaFin) {
+        const endDate = new Date(fechaFin)
+        fechaMatch = fechaMatch && recordDate <= endDate
+      }
+    }
+
+    return servicioMatch && ujierMatch && fechaMatch
   })
 
   const chartData = filteredData.slice(0, 7).reverse()
@@ -34,6 +52,20 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
       : 0
   const mayorAsistencia = filteredData.length > 0 ? Math.max(...filteredData.map((r) => r.total)) : 0
   const menorAsistencia = filteredData.length > 0 ? Math.min(...filteredData.map((r) => r.total)) : 0
+
+  const clearDateFilters = () => {
+    setFechaInicio("")
+    setFechaFin("")
+  }
+
+  const setQuickDateFilter = (days: number) => {
+    const today = new Date()
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - days)
+
+    setFechaInicio(startDate.toISOString().split("T")[0])
+    setFechaFin(today.toISOString().split("T")[0])
+  }
 
   const downloadCSV = () => {
     const headers = [
@@ -86,6 +118,8 @@ INFORME DE ASISTENCIA
 Filtros Aplicados:
 - Servicio: ${filtroServicio === "todos" ? "Todos" : filtroServicio}
 - Ujier: ${filtroUjier === "todos" ? "Todos" : filtroUjier}
+- Fecha inicio: ${fechaInicio || "Sin filtro"}
+- Fecha fin: ${fechaFin || "Sin filtro"}
 - Fecha de generación: ${new Date().toLocaleDateString("es-ES")}
 
 ESTADÍSTICAS GENERALES:
@@ -140,12 +174,13 @@ ${"=".repeat(50)}
 
       {/* Filters */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-4 space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Filter className="w-4 h-4 text-gray-600" />
             <span className="text-sm font-medium text-gray-700">Filtros</span>
           </div>
 
+          {/* Filtros básicos */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-600 mb-1 block">Tipo de Servicio</label>
@@ -172,13 +207,102 @@ ${"=".repeat(50)}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="Juan Pérez">Juan Pérez</SelectItem>
-                  <SelectItem value="María García">María García</SelectItem>
-                  <SelectItem value="Carlos López">Carlos López</SelectItem>
-                  <SelectItem value="Ana Martín">Ana Martín</SelectItem>
+                  <SelectItem value="Wilmar Rojas">Wilmar Rojas</SelectItem>
+                  <SelectItem value="Juan Caldera">Juan Caldera</SelectItem>
+                  <SelectItem value="Joaquin Velez">Joaquin Velez</SelectItem>
+                  <SelectItem value="Yarissa Rojas">Yarissa Rojas</SelectItem>
+                  <SelectItem value="Cristian Gomez">Cristian Gomez</SelectItem>
+                  <SelectItem value="Hector Gaviria">Hector Gaviria</SelectItem>
+                  <SelectItem value="Ivan Caro">Ivan Caro</SelectItem>
+                  <SelectItem value="Jhon echavarria">Jhon echavarria</SelectItem>
+                  <SelectItem value="Karen Cadavid">Karen Cadavid</SelectItem>
+                  <SelectItem value="Carolina Monsalve">Carolina Monsalve</SelectItem>
+                  <SelectItem value="Marta Verona">Marta Verona</SelectItem>
+                  <SelectItem value="Nicolas Gömez">Nicolas Gömez</SelectItem>
+                  <SelectItem value="Oraliz Fernåndez">Oraliz Fernåndez</SelectItem>
+                  <SelectItem value="Santiago Graciano">Santiago Graciano</SelectItem>
+                  <SelectItem value="Suri Vélez">Suri Vélez</SelectItem>
+                  <SelectItem value="Wilmar Vélez">Wilmar Vélez</SelectItem>
+                  <SelectItem value="Diana Suarez">Diana Suarez</SelectItem>
+                  <SelectItem value="José perdomo">José perdomo</SelectItem>
+                  <SelectItem value="Carolina Caro">Carolina Caro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Filtros de fecha */}
+          <div className="border-t pt-3">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Filtro por Fechas</span>
+            </div>
+
+            {/* Botones de filtro rápido */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDateFilter(7)}
+                className="text-xs bg-transparent"
+              >
+                7 días
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDateFilter(30)}
+                className="text-xs bg-transparent"
+              >
+                30 días
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDateFilter(90)}
+                className="text-xs bg-transparent"
+              >
+                90 días
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearDateFilters} className="text-xs bg-transparent">
+                Limpiar
+              </Button>
+            </div>
+
+            {/* Campos de fecha */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Fecha Inicio</label>
+                <Input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Fecha Fin</label>
+                <Input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Indicador de filtros activos */}
+            {(fechaInicio || fechaFin) && (
+              <div className="mt-2 flex items-center gap-2">
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  {fechaInicio && fechaFin
+                    ? `${fechaInicio} a ${fechaFin}`
+                    : fechaInicio
+                      ? `Desde ${fechaInicio}`
+                      : `Hasta ${fechaFin}`}
+                </Badge>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -360,7 +484,7 @@ ${"=".repeat(50)}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2 mb-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-3">
                   <div className="text-center p-2 bg-slate-50 rounded-lg">
                     <div className="text-sm font-semibold text-slate-600">{record.hermanos}</div>
                     <div className="text-xs text-gray-500">Hermanos</div>
@@ -445,7 +569,7 @@ ${"=".repeat(50)}
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-2 pt-3 border-t">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 pt-3 border-t">
                 <div className="text-center p-3 bg-slate-50 rounded-lg">
                   <div className="text-lg font-bold text-slate-600">{selectedRecord.hermanos}</div>
                   <div className="text-xs text-gray-500">Hermanos</div>

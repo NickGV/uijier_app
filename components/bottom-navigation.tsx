@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Calculator, Clock, Users, Lock } from "lucide-react"
+import { Calculator, Users, UserCheck, Clock, Lock } from "lucide-react"
 
 interface BottomNavigationProps {
   currentScreen: string
@@ -12,13 +12,19 @@ interface BottomNavigationProps {
 export function BottomNavigation({ currentScreen, onScreenChange, isAdminAuthenticated }: BottomNavigationProps) {
   const navItems = [
     { id: "conteo", label: "Conteo", icon: Calculator },
+    { id: "simpatizantes", label: "Simpatizantes", icon: Users },
+    {
+      id: "miembros",
+      label: "Miembros",
+      icon: isAdminAuthenticated ? UserCheck : Lock,
+      requiresAuth: true,
+    },
     {
       id: "historial",
       label: "Historial",
       icon: isAdminAuthenticated ? Clock : Lock,
       requiresAuth: true,
     },
-    { id: "simpatizantes", label: "Simpatizantes", icon: Users },
   ]
 
   return (
@@ -33,7 +39,7 @@ export function BottomNavigation({ currentScreen, onScreenChange, isAdminAuthent
             <Button
               key={item.id}
               variant="ghost"
-              className={`flex flex-col items-center gap-1 h-auto py-2 px-4 ${
+              className={`flex flex-col items-center gap-1 h-auto py-1 px-2 ${
                 isActive
                   ? "text-slate-700 bg-slate-100"
                   : isLocked
@@ -43,7 +49,7 @@ export function BottomNavigation({ currentScreen, onScreenChange, isAdminAuthent
               onClick={() => onScreenChange(item.id)}
             >
               <Icon
-                className={`w-5 h-5 ${isActive ? "text-slate-700" : isLocked ? "text-gray-400" : "text-gray-600"}`}
+                className={`w-4 h-4 ${isActive ? "text-slate-700" : isLocked ? "text-gray-400" : "text-gray-600"}`}
               />
               <span
                 className={`text-xs font-medium ${
