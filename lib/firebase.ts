@@ -1,8 +1,7 @@
-"use client"
-
+// lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore"
-import { getAuth, signInAnonymously } from "firebase/auth"
+import { getAuth, signInAnonymously } from "firebase/auth" /* NEW */
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,50 +15,37 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 const db = getFirestore(app)
+
+/* NEW –- Auth + anonymous sign-in */
 const auth = getAuth(app)
 
-// Only run in browser environment
 if (typeof window !== "undefined") {
-  // Anonymous sign-in with retry
-  const signInWithRetry = async (retries = 3) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        await signInAnonymously(auth)
-        console.log("Anonymous sign-in successful")
-        break
-      } catch (err) {
-        console.error(`Anonymous sign-in attempt ${i + 1} failed:`, err)
-        if (i === retries - 1) {
-          console.error("All anonymous sign-in attempts failed")
-        } else {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1))) // Exponential backoff
-        }
-      }
-    }
-  }
+  // We’re in the browser, do the anonymous sign-in once
+  signInAnonymously(auth).catch((err) => {
+    console.error("Anonymous sign-in failed:", err)
+  })
+}
 
-  signInWithRetry()
-
-  // Enable offline persistence with better error handling
-  const enablePersistence = async () => {
-    try {
-      await enableIndexedDbPersistence(db)
+// Enable offline persistence (IndexedDB)
+// This must be called once and before any other Firestore operations.
+try {
+  enableIndexedDbPersistence(db)
+    .then(() => {
       console.log("Offline persistence enabled successfully!")
-    } catch (err: any) {
+    })
+    .catch((err) => {
       if (err.code === "failed-precondition") {
-        console.warn("Multiple tabs open, persistence could not be enabled.")
+        console.warn(
+          "Multiple tabs open, persistence could not be enabled. Data will not be persisted offline across tabs.",
+        )
       } else if (err.code === "unimplemented") {
-        console.warn("Browser does not support persistence features.")
-      } else if (err.code === "already-enabled") {
-        console.log("Persistence already enabled")
+        console.warn("The current browser does not support all of the features required to enable persistence.")
       } else {
         console.error("Error enabling offline persistence:", err)
       }
-    }
-  }
-
-  // Wait a bit for auth to initialize before enabling persistence
-  setTimeout(enablePersistence, 1000)
+    })
+} catch (error) {
+  console.warn("Firestore persistence already enabled or failed to initialize:", error)
 }
 
 export { db, auth }
