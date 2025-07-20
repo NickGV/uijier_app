@@ -642,34 +642,40 @@ export function useDataSync() {
       setHistorial(Array.isArray(localHistorial) && localHistorial.length > 0 ? localHistorial : initialHistorial)
       setPendingSync(Array.isArray(pendingSyncData) ? pendingSyncData : [])
 
-      console.log("App initialized with local data")
+      console.log("✅ App initialized with local data - Ready to use offline!")
+      
+      // Mark as ready immediately - don't wait for authentication
       setIsLoading(false)
 
-      // Now try to go online if possible
-      checkOnlineStatus()
+      // Try to go online in background - don't block the app
+      setTimeout(() => {
+        checkOnlineStatus()
+      }, 1000)
     } catch (error) {
       console.error("Error initializing app:", error)
-      // If everything fails, use initial data
+      // If everything fails, use initial data but still make app usable
       setSimpatizantes(initialSimpatizantes)
       setMiembros(initialMiembros)
       setHistorial(initialHistorial)
-      setIsLoading(false)
+      setIsLoading(false) // Always set to false so app is usable
     }
   }, [])
 
-  // Enhanced online/offline detection
+  // Enhanced online/offline detection - runs in background, doesn't block app
   const checkOnlineStatus = useCallback(async () => {
     if (!isMounted) return
 
     try {
       // Check if we can actually connect to Firebase
       const online = navigator.onLine
-      setIsOnline(online)
-
+      
       if (online) {
-        // Try to authenticate and sync
+        console.log("🌐 Detected internet connection, trying to authenticate...")
+        setIsOnline(true)
+        
+        // Try to authenticate and sync in background
         try {
-          // Wait for auth state
+          // Wait for auth state with timeout
           const authPromise = new Promise((resolve) => {
             const unsubscribe = onAuthStateChanged(auth, (user) => {
               unsubscribe()
@@ -679,25 +685,37 @@ export function useDataSync() {
 
           const user = await Promise.race([
             authPromise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 5000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 3000))
           ])
 
-          setIsAuthReady(!!user)
-          
           if (user) {
+            console.log("🔐 Firebase authentication successful")
+            setIsAuthReady(true)
+            setSyncError(null)
+            
             // Process pending sync operations
             await processPendingSync()
             // Set up real-time listeners
             setupFirebaseListeners()
+          } else {
+            console.log("❌ Firebase authentication failed")
+            setIsAuthReady(false)
           }
         } catch (error) {
-          console.log("Auth failed, continuing offline:", error)
+          console.log("⚠️ Auth failed, but app continues working offline:", error)
           setIsOnline(false)
+          setIsAuthReady(false)
+          setSyncError("No se pudo conectar con el servidor")
         }
+      } else {
+        console.log("📴 No internet connection detected")
+        setIsOnline(false)
+        setIsAuthReady(false)
       }
     } catch (error) {
-      console.log("Online check failed, staying offline:", error)
+      console.log("⚠️ Online check failed, staying offline:", error)
       setIsOnline(false)
+      setIsAuthReady(false)
     }
   }, [isMounted])
 
@@ -910,7 +928,7 @@ export function useDataSync() {
     }
   }, [isAuthReady, saveLocalData])
 
-  // Data operations - always work offline
+  // Data operations - always work offline immediately
   const addSimpatizante = useCallback(async (newSimpatizanteData: any) => {
     const tempId = Date.now().toString()
     const simpatizanteCompleto = {
@@ -919,49 +937,69 @@ export function useDataSync() {
       fechaRegistro: new Date().toISOString().split("T")[0],
     }
 
-    // Always update local state immediately
+    // ALWAYS update local state immediately - no conditions
     const updatedSimpatizantes = [...simpatizantes, simpatizanteCompleto]
     setSimpatizantes(updatedSimpatizantes)
-    await saveLocalData("simpatizantes", updatedSimpatizantes)
-    console.log("✅ Simpatizante added locally")
+    
+    // Save locally immediately
+    try {
+      await saveLocalData("simpatizantes", updatedSimpatizantes)
+      console.log("✅ Simpatizante added locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
 
-    // If online, sync immediately; if offline, queue for later
+    // Queue for sync (always queue regardless of online status)
+    try {
+      await queueOperation({ type: "addSimpatizante", data: simpatizanteCompleto })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    // If we're online AND authenticated, try to sync immediately as bonus
     if (isOnline && isAuthReady) {
       try {
         const { id, ...dataToSave } = simpatizanteCompleto
         await addDoc(collection(db, "simpatizantes"), dataToSave)
-        console.log("✅ Simpatizante synced to Firebase")
+        console.log("🔄 Simpatizante synced to Firebase immediately")
       } catch (error) {
-        console.warn("⚠️ Failed to sync simpatizante, queuing for later:", error)
-        await queueOperation({ type: "addSimpatizante", data: simpatizanteCompleto })
+        console.warn("⚠️ Immediate sync failed, but already queued for later:", error)
       }
-    } else {
-      await queueOperation({ type: "addSimpatizante", data: simpatizanteCompleto })
     }
 
     return simpatizanteCompleto
   }, [simpatizantes, saveLocalData, isOnline, isAuthReady, queueOperation])
 
   const updateSimpatizante = useCallback(async (id: string, updatedData: any) => {
-    // Always update local state immediately
+    // ALWAYS update local state immediately - no conditions
     const updatedSimpatizantes = simpatizantes.map((s) => 
       s.id === id ? { ...s, ...updatedData } : s
     )
     setSimpatizantes(updatedSimpatizantes)
-    await saveLocalData("simpatizantes", updatedSimpatizantes)
-    console.log("✅ Simpatizante updated locally")
+    
+    // Save locally immediately
+    try {
+      await saveLocalData("simpatizantes", updatedSimpatizantes)
+      console.log("✅ Simpatizante updated locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
 
-    // If online, sync immediately; if offline, queue for later
+    // Queue for sync (always queue)
+    try {
+      await queueOperation({ type: "updateSimpatizante", id, data: updatedData })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    // If online and authenticated, try immediate sync
     if (isOnline && isAuthReady) {
       try {
         await updateDoc(doc(db, "simpatizantes", id), updatedData)
-        console.log("✅ Simpatizante update synced to Firebase")
+        console.log("🔄 Simpatizante update synced to Firebase immediately")
       } catch (error) {
-        console.warn("⚠️ Failed to sync simpatizante update, queuing for later:", error)
-        await queueOperation({ type: "updateSimpatizante", id, data: updatedData })
+        console.warn("⚠️ Immediate sync failed, but already queued for later:", error)
       }
-    } else {
-      await queueOperation({ type: "updateSimpatizante", id, data: updatedData })
     }
   }, [simpatizantes, saveLocalData, isOnline, isAuthReady, queueOperation])
 
@@ -973,49 +1011,69 @@ export function useDataSync() {
       fechaRegistro: new Date().toISOString().split("T")[0],
     }
 
-    // Always update local state immediately
+    // ALWAYS update local state immediately - no conditions
     const updatedMiembros = [...miembros, miembroCompleto]
     setMiembros(updatedMiembros)
-    await saveLocalData("miembros", updatedMiembros)
-    console.log("✅ Miembro added locally")
+    
+    // Save locally immediately
+    try {
+      await saveLocalData("miembros", updatedMiembros)
+      console.log("✅ Miembro added locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
 
-    // If online, sync immediately; if offline, queue for later
+    // Queue for sync (always queue)
+    try {
+      await queueOperation({ type: "addMiembro", data: miembroCompleto })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    // If online and authenticated, try immediate sync
     if (isOnline && isAuthReady) {
       try {
         const { id, ...dataToSave } = miembroCompleto
         await addDoc(collection(db, "miembros"), dataToSave)
-        console.log("✅ Miembro synced to Firebase")
+        console.log("🔄 Miembro synced to Firebase immediately")
       } catch (error) {
-        console.warn("⚠️ Failed to sync miembro, queuing for later:", error)
-        await queueOperation({ type: "addMiembro", data: miembroCompleto })
+        console.warn("⚠️ Immediate sync failed, but already queued for later:", error)
       }
-    } else {
-      await queueOperation({ type: "addMiembro", data: miembroCompleto })
     }
 
     return miembroCompleto
   }, [miembros, saveLocalData, isOnline, isAuthReady, queueOperation])
 
   const updateMiembro = useCallback(async (id: string, updatedData: any) => {
-    // Always update local state immediately
+    // ALWAYS update local state immediately - no conditions
     const updatedMiembros = miembros.map((m) => 
       m.id === id ? { ...m, ...updatedData } : m
     )
     setMiembros(updatedMiembros)
-    await saveLocalData("miembros", updatedMiembros)
-    console.log("✅ Miembro updated locally")
+    
+    // Save locally immediately
+    try {
+      await saveLocalData("miembros", updatedMiembros)
+      console.log("✅ Miembro updated locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
 
-    // If online, sync immediately; if offline, queue for later
+    // Queue for sync (always queue)
+    try {
+      await queueOperation({ type: "updateMiembro", id, data: updatedData })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    // If online and authenticated, try immediate sync
     if (isOnline && isAuthReady) {
       try {
         await updateDoc(doc(db, "miembros", id), updatedData)
-        console.log("✅ Miembro update synced to Firebase")
+        console.log("🔄 Miembro update synced to Firebase immediately")
       } catch (error) {
-        console.warn("⚠️ Failed to sync miembro update, queuing for later:", error)
-        await queueOperation({ type: "updateMiembro", id, data: updatedData })
+        console.warn("⚠️ Immediate sync failed, but already queued for later:", error)
       }
-    } else {
-      await queueOperation({ type: "updateMiembro", id, data: updatedData })
     }
   }, [miembros, saveLocalData, isOnline, isAuthReady, queueOperation])
 
@@ -1027,25 +1085,37 @@ export function useDataSync() {
       total: conteoData.hermanos + conteoData.hermanas + conteoData.ninos + conteoData.adolescentes + conteoData.simpatizantes,
     }
 
-    // Always update local state immediately
+    // ALWAYS update local state immediately - no conditions
     const updatedHistorial = [nuevoRegistro, ...historial]
     setHistorial(updatedHistorial)
-    await saveLocalData("historial", updatedHistorial)
-    console.log("✅ Conteo saved locally")
+    
+    // Save locally immediately
+    try {
+      await saveLocalData("historial", updatedHistorial)
+      console.log("✅ Conteo saved locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
 
-    // If online, sync immediately; if offline, queue for later
+    // Queue for sync (always queue)
+    try {
+      await queueOperation({ type: "saveConteo", data: nuevoRegistro })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    // If online and authenticated, try immediate sync
     if (isOnline && isAuthReady) {
       try {
         const { id, ...dataToSave } = nuevoRegistro
         await addDoc(collection(db, "historial"), dataToSave)
-        console.log("✅ Conteo synced to Firebase")
+        console.log("🔄 Conteo synced to Firebase immediately")
       } catch (error) {
-        console.warn("⚠️ Failed to sync conteo, queuing for later:", error)
-        await queueOperation({ type: "saveConteo", data: nuevoRegistro })
+        console.warn("⚠️ Immediate sync failed, but already queued for later:", error)
       }
-    } else {
-      await queueOperation({ type: "saveConteo", data: nuevoRegistro })
     }
+
+    return nuevoRegistro
   }, [historial, saveLocalData, isOnline, isAuthReady, queueOperation])
 
   return {
