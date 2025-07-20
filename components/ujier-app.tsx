@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ConteoScreen } from "@/components/conteo-screen"
 import { HistorialScreen } from "@/components/historial-screen"
 import { SimpatizantesScreen } from "@/components/simpatizantes-screen"
@@ -10,7 +10,7 @@ import { MiembroDetailScreen } from "@/components/miembro-detail-screen"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { AdminPasswordInput } from "@/components/admin-password-input"
 import { Lock, WifiOff, Cloud, CheckCircle, XCircle } from "lucide-react"
-import { useDataSync } from "@/hooks/use-data-sync" // Import the new hook
+import { useDataSync } from "@/hooks/use-data-sync-offline" // Updated import
 
 export default function UjierApp() {
   const {
@@ -26,7 +26,8 @@ export default function UjierApp() {
     isSyncing,
     syncError,
     isLoading,
-  } = useDataSync() // Use the data sync hook
+    pendingSyncCount,
+  } = useDataSync() // Use the offline-first data sync hook
 
   const [currentScreen, setCurrentScreen] = useState("conteo")
   const [selectedSimpatizante, setSelectedSimpatizante] = useState<any>(null)
@@ -34,6 +35,19 @@ export default function UjierApp() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
   const [showAdminDialog, setShowAdminDialog] = useState(false)
   const [requestedScreen, setRequestedScreen] = useState("")
+
+  // Register service worker for offline support
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered successfully:', registration)
+        })
+        .catch((registrationError) => {
+          console.log('Service Worker registration failed:', registrationError)
+        })
+    }
+  }, [])
 
   const handleScreenChange = (screen: string) => {
     if ((screen === "historial" || screen === "miembros") && !isAdminAuthenticated) {
@@ -110,10 +124,16 @@ export default function UjierApp() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
-        <div className="text-center text-gray-600">
-          <Cloud className="w-12 h-12 mx-auto animate-pulse text-slate-500" />
-          <p className="mt-4 text-lg font-semibold">Cargando datos...</p>
-          <p className="text-sm text-gray-500">Esto puede tardar un momento.</p>
+        <div className="text-center text-gray-600 p-6">
+          <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
+            <Cloud className="w-8 h-8 animate-pulse text-slate-500" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Inicializando Ujier App</h2>
+          <p className="text-sm text-gray-500 mb-4">Cargando datos locales...</p>
+          <div className="flex items-center justify-center gap-2 text-xs">
+            <WifiOff className="w-4 h-4 text-orange-500" />
+            <span className="text-orange-600">Funciona sin internet</span>
+          </div>
         </div>
       </div>
     )
@@ -143,7 +163,10 @@ export default function UjierApp() {
         ) : (
           <>
             <WifiOff className="w-4 h-4 text-orange-500" />
-            <span className="text-orange-600">Offline (guardando localmente)</span>
+            <span className="text-orange-600">
+              Offline - Funciona sin internet
+              {pendingSyncCount > 0 && ` (${pendingSyncCount} pendientes)`}
+            </span>
           </>
         )}
       </div>
