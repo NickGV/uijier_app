@@ -7,6 +7,79 @@ import localforage from "localforage"
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 
+// Función simple de encriptación (puedes usar bcrypt en producción)
+const encryptPassword = (password: string): string => {
+  // Usando btoa para encoding base64 simple + un salt
+  const salt = "ujier_salt_2025"
+  return btoa(password + salt)
+}
+
+const verifyPassword = (password: string, encryptedPassword: string): boolean => {
+  const salt = "ujier_salt_2025"
+  return btoa(password + salt) === encryptedPassword
+}
+
+// Lista de ujieres del sistema
+const ujieresDelSistema = [
+  "Wilmar Rojas",
+  "Juan Caldera", 
+  "Joaquin Velez",
+  "Yarissa Rojas",
+  "Cristian Gomez",
+  "Hector Gaviria",
+  "Ivan Caro",
+  "Jhon echavarria",
+  "Karen Cadavid",
+  "Carolina Monsalve",
+  "Marta Verona",
+  "Nicolas Gomez Velez",
+  "Oraliz Fernandez",
+  "Santiago Graciano",
+  "Suri Velez",
+  "Wilmar Velez",
+  "Diana Suarez",
+  "Cristian Gomez Velez",
+  "Jose Perdomo",
+  "Carolina Caro",
+  "Jose Abeldaño",
+  "Gilberto Castaño",
+]
+
+// Función para generar usuarios con contraseñas encriptadas
+const generateInitialUsuarios = () => {
+  const usuarios: any[] = []
+
+  // Admins específicos (siempre activos)
+  const admins = ["Wilmar Rojas", "Nicolas Gomez Velez", "Juan Caldera", "Jose Abeldaño", "Gilberto Castaño"]
+
+  // Generar usuarios para cada ujier - SIN auto-completar password
+  ujieresDelSistema.forEach((nombre, index) => {
+    const primerNombre = nombre.split(" ")[0].toLowerCase()
+    
+    // Normalizar caracteres especiales para la contraseña base
+    const nombreParaPassword = primerNombre
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+      .replace(/[^a-z]/g, "") // Solo letras minúsculas
+
+    // Password base (usuario puede cambiarlo)
+    const basePassword = nombreParaPassword + "."
+    
+    usuarios.push({
+      id: `ujier-${index + 1}`,
+      nombre: nombre,
+      password: encryptPassword(basePassword), // Encriptar la contraseña base
+      rol: admins.includes(nombre) ? "admin" : "ujier",
+      activo: true,
+      fechaCreacion: "2024-01-01",
+    })
+  })
+
+  return usuarios
+}
+
+const initialUsuarios = generateInitialUsuarios()
+
 // Define initial data structures with real church data
 const initialSimpatizantes = [
   {
@@ -49,13 +122,6 @@ const initialSimpatizantes = [
     nombre: "Sergio Peña",
     telefono: "",
     notas: "Alto",
-    fechaRegistro: "2025-07-19",
-  },
-  {
-    id: "gFe6IxMSWJufa64ltyDS",
-    nombre: "Piedad Piedrahita",
-    telefono: "",
-    notas: "",
     fechaRegistro: "2025-07-19",
   },
   {
@@ -568,44 +634,7 @@ const initialMiembros = [
 ]
 
 const initialHistorial = [
-  {
-    id: "ea0ARctfE2VjZw1JyZAv",
-    fecha: "2025-07-19",
-    servicio: "Oración y Enseñanza",
-    ujier: "Juan Caldera",
-    hermanos: 5,
-    hermanas: 6,
-    ninos: 5,
-    adolescentes: 5,
-    simpatizantes: 4,
-    total: 25,
-    simpatizantesAsistieron: [],
-    miembrosAsistieron: {
-      hermanos: [],
-      hermanas: [],
-      ninos: [],
-      adolescentes: [],
-    },
-  },
-  {
-    id: "exeZEyHX2aXins9CI8NY",
-    fecha: "2025-07-19",
-    servicio: "Dominical",
-    ujier: "Joaquin Velez",
-    hermanos: 4,
-    hermanas: 5,
-    ninos: 5,
-    adolescentes: 4,
-    simpatizantes: 3,
-    total: 21,
-    simpatizantesAsistieron: [],
-    miembrosAsistieron: {
-      hermanos: [],
-      hermanas: [],
-      ninos: [],
-      adolescentes: [],
-    },
-  },
+  {}
 ]
 
 export function useDataSync() {
@@ -613,6 +642,7 @@ export function useDataSync() {
   const [simpatizantes, setSimpatizantes] = useState<any[]>([])
   const [miembros, setMiembros] = useState<any[]>([])
   const [historial, setHistorial] = useState<any[]>([])
+  const [usuarios, setUsuarios] = useState<any[]>([]) // Added usuarios state
   const [isOnline, setIsOnline] = useState(false) // Start offline-first
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -634,12 +664,14 @@ export function useDataSync() {
       const localSimpatizantes = await loadLocalData("simpatizantes")
       const localMiembros = await loadLocalData("miembros") 
       const localHistorial = await loadLocalData("historial")
+      const localUsuarios = await loadLocalData("usuarios") // Added usuarios loading
       const pendingSyncData = await loadLocalData("pendingSync")
 
       // Set data with fallbacks
       setSimpatizantes(Array.isArray(localSimpatizantes) && localSimpatizantes.length > 0 ? localSimpatizantes : initialSimpatizantes)
       setMiembros(Array.isArray(localMiembros) && localMiembros.length > 0 ? localMiembros : initialMiembros)
       setHistorial(Array.isArray(localHistorial) && localHistorial.length > 0 ? localHistorial : initialHistorial)
+      setUsuarios(Array.isArray(localUsuarios) && localUsuarios.length > 0 ? localUsuarios : initialUsuarios) // Added usuarios initialization
       setPendingSync(Array.isArray(pendingSyncData) ? pendingSyncData : [])
 
       console.log("✅ App initialized with local data - Ready to use offline!")
@@ -657,6 +689,7 @@ export function useDataSync() {
       setSimpatizantes(initialSimpatizantes)
       setMiembros(initialMiembros)
       setHistorial(initialHistorial)
+      setUsuarios(initialUsuarios) // Added usuarios fallback
       setIsLoading(false) // Always set to false so app is usable
     }
   }, [])
@@ -809,7 +842,7 @@ export function useDataSync() {
     setIsSyncing(true)
     console.log(`🔄 Processing ${pendingSync.length} pending operations...`)
 
-    const processedOperations = []
+    const processedOperations: any[] = []
 
     for (const operation of pendingSync) {
       try {
@@ -918,6 +951,26 @@ export function useDataSync() {
         }
       )
       unsubscribers.push(unsubHistorial)
+
+      // Usuarios listener - solo sincronizar desde Firebase, no subir automáticamente
+      const unsubUsuarios = onSnapshot(
+        collection(db, "usuarios"),
+        (snapshot) => {
+          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          if (data.length > 0) {
+            setUsuarios(data)
+            saveLocalData("usuarios", data)
+            console.log("🔄 Usuarios updated from Firebase")
+          } else {
+            console.log("📭 No hay usuarios en Firebase - manteniendo locales")
+          }
+        },
+        (error) => {
+          console.warn("⚠️ Usuarios listener error:", error)
+          setSyncError("Error de conexión con usuarios")
+        }
+      )
+      unsubscribers.push(unsubUsuarios)
 
       // Cleanup function
       return () => {
@@ -1118,15 +1171,134 @@ export function useDataSync() {
     return nuevoRegistro
   }, [historial, saveLocalData, isOnline, isAuthReady, queueOperation])
 
+  // User management functions
+  const addUsuario = useCallback(async (newUsuarioData: any) => {
+    const tempId = Date.now().toString()
+    const usuarioCompleto = {
+      ...newUsuarioData,
+      id: tempId,
+      password: encryptPassword(newUsuarioData.password), // Encriptar password
+      fechaCreacion: new Date().toISOString().split("T")[0],
+      activo: true,
+    }
+
+    // Update local state immediately
+    const updatedUsuarios = [...usuarios, usuarioCompleto]
+    setUsuarios(updatedUsuarios)
+    
+    try {
+      await saveLocalData("usuarios", updatedUsuarios)
+      console.log("✅ Usuario added locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
+
+    // Queue for sync
+    try {
+      await queueOperation({ type: "addUsuario", data: usuarioCompleto })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+
+    return usuarioCompleto
+  }, [usuarios, saveLocalData, queueOperation])
+
+  const updateUsuario = useCallback(async (id: string, updatedData: any) => {
+    // Si se está actualizando la password, encriptarla
+    if (updatedData.password) {
+      updatedData.password = encryptPassword(updatedData.password)
+    }
+
+    // Los admins siempre deben mantenerse activos
+    const usuario = usuarios.find((u) => u.id === id)
+    if (usuario?.rol === "admin" && updatedData.hasOwnProperty("activo")) {
+      updatedData.activo = true
+    }
+
+    const updatedUsuarios = usuarios.map((u) => (u.id === id ? { ...u, ...updatedData } : u))
+    setUsuarios(updatedUsuarios)
+    
+    try {
+      await saveLocalData("usuarios", updatedUsuarios)
+      console.log("✅ Usuario updated locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
+
+    // Queue for sync
+    try {
+      await queueOperation({ type: "updateUsuario", id, data: updatedData })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+  }, [usuarios, saveLocalData, queueOperation])
+
+  const deleteUsuario = useCallback(async (id: string) => {
+    // No permitir eliminar admins
+    const usuario = usuarios.find((u) => u.id === id)
+    if (usuario?.rol === "admin") {
+      console.log("No se puede eliminar un administrador")
+      return
+    }
+
+    const updatedUsuarios = usuarios.filter((u) => u.id !== id)
+    setUsuarios(updatedUsuarios)
+    
+    try {
+      await saveLocalData("usuarios", updatedUsuarios)
+      console.log("✅ Usuario deleted locally (offline mode)")
+    } catch (error) {
+      console.error("❌ Failed to save locally:", error)
+    }
+
+    // Queue for sync
+    try {
+      await queueOperation({ type: "deleteUsuario", id })
+    } catch (error) {
+      console.error("❌ Failed to queue operation:", error)
+    }
+  }, [usuarios, saveLocalData, queueOperation])
+
+  // Authentication function with encrypted password verification
+  const authenticateUser = useCallback((nombre: string, password: string) => {
+    console.log("=== DEBUG AUTENTICACIÓN ENCRIPTADA ===")
+    console.log("Nombre ingresado:", `"${nombre}"`)
+    console.log("Password ingresado:", `"${password}"`)
+    
+    // Buscar usuario por nombre exacto (case-sensitive)
+    const user = usuarios.find((u) => {
+      const nombreMatch = u.nombre === nombre
+      const passwordMatch = verifyPassword(password, u.password) // Verificar password encriptado
+      console.log(`Comparando con ${u.nombre}:`, { nombreMatch, passwordMatch })
+      return nombreMatch && passwordMatch
+    })
+
+    console.log("Usuario encontrado:", user)
+    console.log("=== FIN DEBUG ===")
+
+    if (!user) {
+      return { success: false, message: "Credenciales incorrectas" }
+    }
+    if (!user.activo && user.rol !== "admin") {
+      return { success: false, message: "Usuario desactivado. Contacte al administrador." }
+    }
+    return { success: true, user }
+  }, [usuarios])
+
   return {
     simpatizantes: simpatizantes || [],
     miembros: miembros || [],
     historial: historial || [],
+    usuarios: usuarios || [], // Added usuarios
     addSimpatizante,
     updateSimpatizante,
     addMiembro,
     updateMiembro,
     saveConteo,
+    addUsuario,
+    updateUsuario,
+    deleteUsuario,
+    authenticateUser,
     isOnline,
     isSyncing,
     syncError,

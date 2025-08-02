@@ -40,16 +40,16 @@ export function SimpatizantesScreen({
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-2 sm:p-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Users className="w-5 h-5" />
+        <CardHeader className="px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             Simpatizantes
           </CardTitle>
           <div className="flex items-center justify-between">
-            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-xs">
               {filteredSimpatizantes.length} registrados
             </Badge>
           </div>
@@ -58,14 +58,14 @@ export function SimpatizantesScreen({
 
       {/* Search */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4" />
             <Input
               placeholder="Buscar simpatizante..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 rounded-lg"
+              className="pl-8 sm:pl-10 rounded-lg h-8 sm:h-9 text-xs sm:text-sm"
             />
           </div>
         </CardContent>
@@ -74,8 +74,8 @@ export function SimpatizantesScreen({
       {/* Add New Button */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogTrigger asChild>
-          <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-3 shadow-lg">
-            <Plus className="w-5 h-5 mr-2" />
+          <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl py-2 sm:py-3 shadow-lg text-sm sm:text-base">
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Agregar Nuevo Simpatizante
           </Button>
         </DialogTrigger>
@@ -131,11 +131,13 @@ export function SimpatizantesScreen({
       <div className="space-y-3">
         {filteredSimpatizantes.map((simpatizante) => (
           <Card key={simpatizante.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800 mb-1">{simpatizante.nombre}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{simpatizante.telefono}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-800 mb-1 text-sm sm:text-base truncate">
+                    {simpatizante.nombre}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2">{simpatizante.telefono}</p>
                   <p className="text-xs text-gray-500 line-clamp-2">{simpatizante.notas}</p>
                   <div className="mt-2">
                     <Badge variant="outline" className="text-xs">
@@ -146,10 +148,10 @@ export function SimpatizantesScreen({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-3 bg-transparent"
+                  className="ml-2 sm:ml-3 bg-transparent h-8 w-8"
                   onClick={() => onSelectSimpatizante(simpatizante)}
                 >
-                  <Info className="w-4 h-4" />
+                  <Info className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
               </div>
             </CardContent>
