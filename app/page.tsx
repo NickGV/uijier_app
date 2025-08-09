@@ -30,7 +30,6 @@ export default function UjierApp() {
     updateUsuario,
     deleteUsuario,
     authenticateUser,
-    syncMiembros, // Nueva función para sincronizar miembros después del login
     isOnline,
     isSyncing,
     syncError,
@@ -40,7 +39,6 @@ export default function UjierApp() {
   // Authentication state
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoginLoading, setIsLoginLoading] = useState(false) // Estado separado para el loading del login
 
   // Navigation state
   const [currentScreen, setCurrentScreen] = useState("dashboard")
@@ -86,27 +84,11 @@ export default function UjierApp() {
     setDatosServicioBase(null)
   }
 
-  const handleLogin = async (user: any) => {
-    setIsLoginLoading(true)
+  const handleLogin = (user: any) => {
     setCurrentUser(user)
     setIsAuthenticated(true)
     // Set initial screen based on role
     setCurrentScreen(user.rol === "admin" ? "dashboard" : "conteo")
-    
-    // Sincronizar miembros después del login exitoso
-    console.log("🔄 Iniciando sincronización de miembros después del login...")
-    try {
-      const syncResult = await syncMiembros()
-      if (syncResult.success) {
-        console.log("✅ Sincronización de miembros completada:", syncResult.message)
-      } else {
-        console.log("⚠️ Sincronización de miembros falló:", syncResult.message)
-      }
-    } catch (error) {
-      console.error("❌ Error durante la sincronización de miembros:", error)
-    } finally {
-      setIsLoginLoading(false) // Detener loading después de la sincronización
-    }
   }
 
   const handleLogout = () => {
@@ -130,14 +112,7 @@ export default function UjierApp() {
 
   const renderScreen = () => {
     if (!isAuthenticated) {
-      return (
-        <LoginScreen 
-          usuarios={usuarios} 
-          onLogin={handleLogin} 
-          onAuthenticate={authenticateUser} 
-          isSyncing={isLoginLoading || isSyncing} 
-        />
-      )
+      return <LoginScreen usuarios={usuarios} onLogin={handleLogin} onAuthenticate={authenticateUser} />
     }
 
     switch (currentScreen) {
@@ -255,6 +230,7 @@ export default function UjierApp() {
             onSelectUsuario={handleUsuarioSelect}
             onAddUsuario={addUsuario}
             onUpdateUsuario={updateUsuario}
+            currentUser={currentUser}
           />
         )
       case "simpatizante-detail":
@@ -396,10 +372,10 @@ export default function UjierApp() {
         )}
       </div>
 
-      <div className="flex flex-col min-h-screen pt-8 sm:pt-10">
-        <div className="flex-1 pb-24 sm:pb-32">{renderScreen()}</div>
+       <div className="flex flex-col min-h-screen pt-8 sm:pt-10">
+        <div className="flex-1 pb-24 sm:pb-32 safe-area-bottom">{renderScreen()}</div>
         {!["simpatizante-detail", "miembro-detail", "ujier-detail"].includes(currentScreen) && (
-          <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm z-50">
+          <div className="fixed bottom-0 left-0 right-0 w-full max-w-sm z-20 safe-area-bottom">
             <BottomNavigation
               currentScreen={currentScreen}
               onScreenChange={handleScreenChange}

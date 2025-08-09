@@ -1,9 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Users, UserCheck, Calendar, TrendingUp, Clock, Settings, Activity, Shield, Eye } from "lucide-react"
+import { Calculator, Users, UserCheck, Clock, Settings, Calendar, TrendingUp, Info, User } from "lucide-react"
 
 interface DashboardScreenProps {
   historial: any[]
@@ -22,7 +21,10 @@ export function DashboardScreen({
   currentUser,
   onNavigate,
 }: DashboardScreenProps) {
-  // Estadísticas generales
+  const isAdmin = currentUser?.rol === "admin"
+  const isDirectiva = currentUser?.rol === "directiva"
+
+  // Estadísticas
   const totalRegistros = historial.length
   const ultimoMes = historial.filter((h) => {
     const fecha = new Date(h.fecha)
@@ -35,215 +37,285 @@ export function DashboardScreen({
     ultimoMes.length > 0 ? Math.round(ultimoMes.reduce((sum, h) => sum + h.total, 0) / ultimoMes.length) : 0
 
   const usuariosActivos = usuarios.filter((u) => u.activo).length
-  const usuariosInactivos = usuarios.filter((u) => !u.activo).length
 
-  // Últimos registros
-  const ultimosRegistros = historial.slice(0, 3)
+  const getRoleColor = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return "from-red-500 to-red-600"
+      case "directiva":
+        return "from-blue-500 to-blue-600"
+      default:
+        return "from-green-500 to-green-600"
+    }
+  }
 
-  // Servicios más frecuentes
-  const serviciosFrecuencia = historial.reduce(
-    (acc, h) => {
-      acc[h.servicio] = (acc[h.servicio] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>,
-  )
+  const getRoleLabel = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return "Administrador"
+      case "directiva":
+        return "Directiva"
+      default:
+        return "Ujier"
+    }
+  }
 
-  const servicioMasFrecuente = Object.entries(serviciosFrecuencia).sort(([, a], [, b]) => b - a)[0]
+  const getWelcomeMessage = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return "Tiene acceso completo a todas las funciones del sistema"
+      case "directiva":
+        return "Puede ver reportes y gestionar usuarios de forma limitada"
+      default:
+        return "Puede registrar asistencia y gestionar simpatizantes"
+    }
+  }
 
   return (
-    <div className="p-2 sm:p-4 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <Card className="bg-gradient-to-r from-slate-600 to-slate-700 text-white border-0 shadow-lg">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold">Panel de Administración</h1>
-              <p className="text-slate-200 text-sm">Bienvenido, {currentUser.nombre}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <Badge className="bg-white/20 text-white border-white/30 text-xs">Administrador</Badge>
-            <Badge className="bg-white/20 text-white border-white/30 text-xs">
-              <Activity className="w-3 h-3 mr-1" />
-              Activo
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="p-4 space-y-6 max-w-4xl mx-auto">
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-slate-700">{totalRegistros}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Total Registros</div>
-            <div className="text-xs text-gray-500 mt-1">Histórico completo</div>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-blue-700">{promedioAsistencia}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Promedio Mensual</div>
-            <div className="text-xs text-gray-500 mt-1">Último mes</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-emerald-700">{simpatizantes.length}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Simpatizantes</div>
-            <div className="text-xs text-gray-500 mt-1">Registrados</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardContent className="p-3 sm:p-4 text-center">
-            <div className="text-xl sm:text-2xl font-bold text-purple-700">{miembros.length}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Miembros</div>
-            <div className="text-xs text-gray-500 mt-1">Iglesia</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* User Management Stats */}
-      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Gestión de Usuarios
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="w-5 h-5" />
+            Acciones Principales
           </CardTitle>
+          <p className="text-sm text-gray-600">Acceda rápidamente a las funciones más utilizadas</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-lg font-bold text-green-700">{usuariosActivos}</div>
-              <div className="text-xs text-gray-600">Activos</div>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <div className="text-lg font-bold text-red-700">{usuariosInactivos}</div>
-              <div className="text-xs text-gray-600">Inactivos</div>
-            </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-lg font-bold text-blue-700">{usuarios.filter((u) => u.rol === "admin").length}</div>
-              <div className="text-xs text-gray-600">Admins</div>
-            </div>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              onClick={() => onNavigate("conteo")}
+              className="h-16 flex flex-col items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800"
+            >
+              <Calculator className="w-6 h-6" />
+              <div className="text-center">
+                <div className="font-medium">Nuevo Conteo</div>
+                <div className="text-xs opacity-90">Registrar asistencia</div>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => onNavigate("simpatizantes")}
+              variant="outline"
+              className="h-16 flex flex-col items-center justify-center gap-2"
+            >
+              <Users className="w-6 h-6" />
+              <div className="text-center">
+                <div className="font-medium">Simpatizantes</div>
+                <div className="text-xs text-gray-500">Gestionar visitantes</div>
+              </div>
+            </Button>
+
+            {isAdmin && (
+              <Button
+                onClick={() => onNavigate("miembros")}
+                variant="outline"
+                className="h-16 flex flex-col items-center justify-center gap-2"
+              >
+                <UserCheck className="w-6 h-6" />
+                <div className="text-center">
+                  <div className="font-medium">Miembros</div>
+                  <div className="text-xs text-gray-500">Gestionar miembros</div>
+                </div>
+              </Button>
+            )}
+
+            <Button
+              onClick={() => onNavigate("historial")}
+              variant="outline"
+              className="h-16 flex flex-col items-center justify-center gap-2"
+            >
+              <Clock className="w-6 h-6" />
+              <div className="text-center">
+                <div className="font-medium">Historial</div>
+                <div className="text-xs text-gray-500">Ver registros</div>
+              </div>
+            </Button>
           </div>
-          <Button variant="outline" className="w-full bg-transparent" onClick={() => onNavigate("ujieres")}>
-            <Settings className="w-4 h-4 mr-2" />
-            Gestionar Usuarios
-          </Button>
         </CardContent>
       </Card>
 
-      {/* Service Stats */}
-      {servicioMasFrecuente && (
-        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Estadísticas de Servicios
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-800">Servicio más frecuente</div>
-                <div className="text-sm text-gray-600">{servicioMasFrecuente[0]}</div>
-              </div>
-              <Badge variant="outline" className="bg-slate-100 text-slate-700">
-                {servicioMasFrecuente[1]} veces
-              </Badge>
+      {/* Stats Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Resumen de Estadísticas
+          </CardTitle>
+          <p className="text-sm text-gray-600">Vista general de los datos del sistema</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-2xl font-bold text-blue-700">{promedioAsistencia}</div>
+              <div className="text-sm text-blue-600">Promedio Mensual</div>
+              <div className="text-xs text-gray-500 mt-1">Asistencia promedio</div>
             </div>
-            <Button variant="outline" className="w-full bg-transparent" onClick={() => onNavigate("historial")}>
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Ver Análisis Completo
+            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-2xl font-bold text-green-700">{simpatizantes.length}</div>
+              <div className="text-sm text-green-600">Simpatizantes</div>
+              <div className="text-xs text-gray-500 mt-1">Total registrados</div>
+            </div>
+            {isAdmin && (
+              <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="text-2xl font-bold text-purple-700">{miembros.length}</div>
+                <div className="text-sm text-purple-600">Miembros</div>
+                <div className="text-xs text-gray-500 mt-1">Miembros oficiales</div>
+              </div>
+            )}
+            <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="text-2xl font-bold text-orange-700">{totalRegistros}</div>
+              <div className="text-sm text-orange-600">Servicios</div>
+              <div className="text-xs text-gray-500 mt-1">Total registrados</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* User Management */}
+      {(isAdmin || isDirectiva) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Gestión de Usuarios
+            </CardTitle>
+            <p className="text-sm text-gray-600">
+              {isAdmin ? "Administre todos los usuarios del sistema" : "Gestión limitada de usuarios"}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+                <div className="text-xl font-bold text-red-700">{usuarios.filter((u) => u.rol === "admin").length}</div>
+                <div className="text-sm text-red-600">Administradores</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-xl font-bold text-blue-700">
+                  {usuarios.filter((u) => u.rol === "directiva").length}
+                </div>
+                <div className="text-sm text-blue-600">Directiva</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-xl font-bold text-green-700">
+                  {usuarios.filter((u) => u.rol === "ujier").length}
+                </div>
+                <div className="text-sm text-green-600">Ujieres</div>
+              </div>
+              <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="text-xl font-bold text-emerald-700">{usuariosActivos}</div>
+                <div className="text-sm text-emerald-600">Activos</div>
+              </div>
+            </div>
+            <Button onClick={() => onNavigate("ujieres")} variant="outline" className="w-full">
+              <Settings className="w-4 h-4 mr-2" />
+              {isAdmin ? "Gestionar Usuarios" : "Ver Usuarios"}
             </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Recent Activity */}
-      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <Clock className="w-4 h-4" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
             Actividad Reciente
           </CardTitle>
+          <p className="text-sm text-gray-600">Últimos registros de asistencia</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {ultimosRegistros.length > 0 ? (
-            ultimosRegistros.map((registro) => (
-              <div key={registro.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium text-sm text-gray-800">{registro.servicio}</div>
-                  <div className="text-xs text-gray-600">
-                    {new Date(registro.fecha).toLocaleDateString("es-ES")} •{" "}
-                    {Array.isArray(registro.ujier) ? registro.ujier.join(", ") : registro.ujier}
+        <CardContent>
+          <div className="space-y-3">
+            {historial.slice(0, 3).map((registro) => (
+              <div
+                key={registro.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                    <span className="font-medium text-gray-900">{registro.servicio}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {new Date(registro.fecha).toLocaleDateString("es-ES", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}{" "}
+                    • {Array.isArray(registro.ujier) ? registro.ujier.join(", ") : registro.ujier}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-slate-700">{registro.total}</div>
-                  <div className="text-xs text-gray-500">asistentes</div>
+                <div className="text-right ml-4">
+                  <div className="text-xl font-bold text-gray-900">{registro.total}</div>
+                  <div className="text-sm text-gray-500">asistentes</div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-              <p className="text-sm">No hay registros recientes</p>
-            </div>
-          )}
-          <Button variant="outline" className="w-full bg-transparent" onClick={() => onNavigate("historial")}>
-            <Eye className="w-4 h-4 mr-2" />
+            ))}
+            {historial.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">No hay registros recientes</p>
+                <p className="text-sm">Comience registrando la asistencia de un servicio</p>
+              </div>
+            )}
+          </div>
+          <Button onClick={() => onNavigate("historial")} variant="outline" className="w-full mt-4">
+            <Clock className="w-4 h-4 mr-2" />
             Ver Todo el Historial
           </Button>
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-800">Acciones Rápidas</CardTitle>
+      {/* Role Information */}
+      {!isAdmin && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-medium text-orange-900 mb-1">Información sobre su rol</h3>
+                <p className="text-sm text-orange-800">
+                  <strong>Como {getRoleLabel(currentUser?.rol)}:</strong>{" "}
+                  {isDirectiva
+                    ? "Tiene acceso a la mayoría de funciones excepto gestión completa de miembros. Puede gestionar usuarios de forma limitada."
+                    : "Su acceso está limitado a las funciones esenciales de conteo de asistencia y gestión de simpatizantes."}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Tips */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info className="w-5 h-5" />
+            Consejos Rápidos
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <Button
-              variant="outline"
-              className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50 text-xs sm:text-sm h-10 sm:h-12"
-              onClick={() => onNavigate("conteo")}
-            >
-              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Nuevo Conteo
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs sm:text-sm h-10 sm:h-12"
-              onClick={() => onNavigate("simpatizantes")}
-            >
-              <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Simpatizantes
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-purple-200 text-purple-700 hover:bg-purple-50 text-xs sm:text-sm h-10 sm:h-12"
-              onClick={() => onNavigate("miembros")}
-            >
-              <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Miembros
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm h-10 sm:h-12"
-              onClick={() => onNavigate("ujieres")}
-            >
-              <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              Usuarios
-            </Button>
+        <CardContent>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              • <strong>Navegación:</strong> Use la barra inferior para moverse entre secciones
+            </p>
+            <p>
+              • <strong>Conteo:</strong> Registre la asistencia inmediatamente después de cada servicio
+            </p>
+            <p>
+              • <strong>Simpatizantes:</strong> Agregue nombres específicos para mejor seguimiento
+            </p>
+            <p>
+              • <strong>Respaldo:</strong> Los datos se guardan automáticamente en la nube
+            </p>
+            {isAdmin && (
+              <p>
+                • <strong>Usuarios:</strong> Revise periódicamente los permisos de acceso
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

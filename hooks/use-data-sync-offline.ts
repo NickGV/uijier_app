@@ -706,6 +706,15 @@ export function useDataSync() {
         console.log("🌐 Detected internet connection, trying to authenticate...")
         setIsOnline(true)
         
+        // Verificar que auth esté disponible antes de intentar autenticación
+        if (!auth) {
+          console.warn("⚠️ Firebase auth not available, staying offline")
+          setIsOnline(false)
+          setIsAuthReady(false)
+          setSyncError("Firebase no está configurado correctamente")
+          return
+        }
+        
         // Try to authenticate and sync in background
         try {
           // Wait for auth state with timeout

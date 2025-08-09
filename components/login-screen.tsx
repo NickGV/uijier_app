@@ -13,10 +13,9 @@ interface LoginScreenProps {
   usuarios: any[]
   onLogin: (user: any) => void
   onAuthenticate: (nombre: string, password: string) => { success: boolean; message?: string; user?: any }
-  isSyncing?: boolean // Prop para indicar si está sincronizando
 }
 
-export function LoginScreen({ usuarios, onLogin, onAuthenticate, isSyncing = false }: LoginScreenProps) {
+export function LoginScreen({ usuarios, onLogin, onAuthenticate }: LoginScreenProps) {
   const [nombre, setNombre] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -48,19 +47,18 @@ export function LoginScreen({ usuarios, onLogin, onAuthenticate, isSyncing = fal
 
     console.log("Intentando login con:", { nombre: nombre.trim(), password: password.trim() })
 
-    // Simular un delay para mejor UX
+    // Simular un pequeño delay para mejor UX
     setTimeout(() => {
       const result = onAuthenticate(nombre.trim(), password.trim())
       console.log("Resultado de autenticación:", result)
 
       if (result.success) {
         onLogin(result.user)
-        // No detener isLoading aquí para login exitoso - se maneja desde la app principal
       } else {
         setError(result.message || "Error de autenticación")
-        setIsLoading(false) // Solo detener loading si hay error
       }
-    }, 800)
+      setIsLoading(false)
+    }, 500)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -237,13 +235,13 @@ export function LoginScreen({ usuarios, onLogin, onAuthenticate, isSyncing = fal
             {/* Login Button */}
             <Button
               onClick={handleLogin}
-              disabled={isLoading || isSyncing || !nombre.trim() || !password.trim()}
+              disabled={isLoading || !nombre.trim() || !password.trim()}
               className="w-full h-10 sm:h-12 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold rounded-xl shadow-lg text-sm sm:text-base"
             >
-              {isLoading || isSyncing ? (
+              {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {isSyncing ? "Sincronizando datos..." : "Verificando y sincronizando..."}
+                  Verificando...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

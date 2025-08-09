@@ -1,265 +1,77 @@
-# 📊 Sistema de Conteo de Asistencia - Iglesia
+La "Ujier App" es una aplicación web diseñada para ayudar a las iglesias a gestionar y registrar la asistencia a sus servicios y eventos. Su objetivo principal es simplificar el proceso de conteo de asistentes, la gestión de miembros y simpatizantes, y el seguimiento del historial de asistencia, todo ello con una interfaz intuitiva y accesible.
 
-Una aplicación web moderna y responsive para el conteo y gestión de asistencia en servicios religiosos, desarrollada con Next.js, React, TypeScript y Firebase.
+**Funcionalidades Clave:**
 
-## 🌟 Características Principales
+1. **Conteo de Asistencia (Conteo):**
 
-### 👥 Sistema de Usuarios
-- **Roles diferenciados**: Administradores y Ujieres
-- **Autenticación segura** con contraseñas personalizadas
-- **Gestión de usuarios** (solo para administradores)
-- **Estados de usuario** (activo/inactivo)
+1. Permite a los ujieres registrar el número de hermanos, hermanas, niños y adolescentes presentes en un servicio.
+2. Incluye contadores incrementales y decrementales para facilitar el registro.
+3. Permite seleccionar la fecha del servicio y el tipo de servicio (Dominical, Oración y Enseñanza, Hermanas Dorcas, Evangelismo, Jóvenes, Otro).
+4. Permite seleccionar el ujier responsable del conteo o introducir un nombre personalizado.
+5. Ofrece un "Modo Consecutivo" para mantener el conteo base del servicio anterior, útil para eventos de varios días o sesiones.
+6. Permite añadir simpatizantes y miembros específicos que asisten al servicio, ya sean existentes o nuevos.
 
-### 📊 Conteo de Asistencia
-- **Categorías múltiples**: Hermanos, Hermanas, Niños, Adolescentes, Simpatizantes
-- **Conteo manual** con botones +/- y edición directa
-- **Conteo múltiple** para agregar varias personas a la vez
-- **Registro de asistentes** con nombres específicos
-- **Modo consecutivo** para servicios dominicales después de evangelismo/misionero
 
-### 📋 Gestión de Datos
-- **Simpatizantes**: Registro completo con teléfono y notas
-- **Miembros**: Gestión por categorías con información detallada
-- **Historial completo** de todos los servicios
-- **Sincronización automática** con Firebase
 
-### 📈 Reportes y Análisis
-- **Filtros avanzados** por fecha, servicio y ujier
-- **Estadísticas detalladas** por categoría y período
-- **Exportación múltiple**: CSV, Resumen y Detallado
-- **Gráficos de tendencia** interactivos
-- **Análisis de rendimiento** por ujier y servicio
+2. **Gestión de Simpatizantes:**
 
-### 🔄 Funcionalidades Avanzadas
-- **Modo offline** con almacenamiento local
-- **Sincronización automática** cuando hay conexión
-- **Responsive design** optimizado para móviles
-- **PWA ready** para instalación en dispositivos
+1. Mantiene una lista de personas que han visitado la iglesia pero no son miembros formales.
+2. Permite añadir nuevos simpatizantes con su nombre, teléfono, dirección y notas.
+3. Permite buscar y seleccionar simpatizantes existentes para incluirlos en el conteo del día.
+4. Ofrece una pantalla de detalles para ver y actualizar la información de cada simpatizante.
 
-## 🚀 Tecnologías Utilizadas
 
-- **Frontend**: Next.js 15, React 18, TypeScript
-- **UI/UX**: Tailwind CSS, shadcn/ui components
-- **Backend**: Firebase Firestore
-- **Autenticación**: Firebase Auth (anónima)
-- **Estado**: React Hooks + Context
-- **Almacenamiento**: IndexedDB (localforage)
-- **Iconos**: Lucide React
 
-## 📱 Estructura de la Aplicación
+3. **Gestión de Miembros:**
 
-\`\`\`
-src/
-├── app/
-│   ├── layout.tsx          # Layout principal
-│   ├── page.tsx            # Componente principal con routing
-│   └── globals.css         # Estilos globales
-├── components/
-│   ├── ui/                 # Componentes base de shadcn/ui
-│   ├── conteo-screen.tsx   # Pantalla de conteo
-│   ├── historial-screen.tsx # Historial y reportes
-│   ├── simpatizantes-screen.tsx # Gestión de simpatizantes
-│   ├── miembros-screen.tsx # Gestión de miembros
-│   ├── login-screen.tsx    # Autenticación
-│   ├── dashboard-screen.tsx # Dashboard administrativo
-│   ├── ujieres-screen.tsx  # Gestión de usuarios
-│   ├── bottom-navigation.tsx # Navegación inferior
-│   └── *-detail-screen.tsx # Pantallas de detalle
-├── hooks/
-│   └── use-data-sync.ts    # Hook de sincronización
-└── lib/
-    └── firebase.ts         # Configuración Firebase
-\`\`\`
+1. Mantiene una lista de los miembros registrados de la iglesia.
+2. Permite añadir nuevos miembros con su información (nombre, teléfono, categoría, etc.).
+3. Permite buscar y seleccionar miembros existentes para incluirlos en el conteo del día (separados por hermanos, hermanas, niños, adolescentes).
+4. Ofrece una pantalla de detalles para ver y actualizar la información de cada miembro.
 
-## 🔧 Instalación y Configuración
 
-### Prerrequisitos
-- Node.js 18+ 
-- npm o yarn
-- Cuenta de Firebase
 
-### 1. Clonar el repositorio
-\`\`\`bash
-git clone [URL_DEL_REPOSITORIO]
-cd ujier-app
-\`\`\`
+4. **Historial de Asistencia:**
 
-### 2. Instalar dependencias
-\`\`\`bash
-npm install
-# o
-yarn install
-\`\`\`
+1. Registra todos los conteos de asistencia guardados, permitiendo revisar datos históricos.
+2. Muestra un resumen de la asistencia por fecha, tipo de servicio y ujier.
 
-### 3. Configurar Firebase
-1. Crear un proyecto en [Firebase Console](https://console.firebase.google.com)
-2. Habilitar Firestore Database
-3. Habilitar Authentication (método anónimo)
-4. Copiar la configuración del proyecto
 
-### 4. Variables de entorno
-Crear archivo `.env.local` en la raíz del proyecto:
 
-\`\`\`env
-NEXT_PUBLIC_FIREBASE_API_KEY=tu_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=tu_proyecto.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=tu_proyecto_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=tu_proyecto.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=tu_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=tu_app_id
-\`\`\`
+5. **Gestión de Usuarios (Ujieres):**
 
-### 5. Ejecutar en desarrollo
-\`\`\`bash
-npm run dev
-# o
-yarn dev
-\`\`\`
+1. Permite a los administradores gestionar los usuarios de la aplicación (ujieres, directiva, administradores).
+2. Permite añadir, actualizar y desactivar cuentas de usuario.
 
-La aplicación estará disponible en `http://localhost:3000`
 
-## 👤 Usuarios por Defecto
 
-### Administrador Principal
-- **Usuario**: `admin`
-- **Contraseña**: `admin123`
-- **Permisos**: Acceso completo a todas las funciones
+6. **Roles de Usuario y Permisos:**
 
-### Ujieres del Sistema
-La aplicación incluye usuarios predefinidos para todos los ujieres:
-- **Patrón de contraseña**: `[primer_nombre].`
-- **Ejemplo**: Wilmar Rojas → `wilmar.`
+1. **Administrador (admin):** Acceso completo a todas las funcionalidades, incluyendo gestión de miembros y usuarios.
+2. **Directiva:** Acceso a la mayoría de las funcionalidades, excepto la gestión de miembros.
+3. **Ujier:** Acceso limitado principalmente a las pantallas de Conteo y Simpatizantes.
 
-**Lista de Ujieres Incluidos:**
-- Wilmar Rojas, Juan Caldera, Joaquin Velez, Yarissa Rojas
-- Cristian Gomez, Hector Gaviria, Ivan Caro, Jhon echavarria
-- Karen Cadavid, Carolina Monsalve, Marta Verona, Nicolas Gömez
-- Oraliz Fernåndez, Santiago Graciano, Suri Vélez, Wilmar Vélez
-- Diana Suarez, José perdomo, Carolina Caro, Jose Abeldaño
-- Gilberto Castaño
 
-## 📊 Tipos de Servicio
 
-- **Dominical**: Servicio principal dominical
-- **Oración y Enseñanza**: Servicio de oración entre semana
-- **Hermanas Dorcas**: Servicio específico para hermanas
-- **Evangelismo**: Servicio evangelístico
-- **Misionero**: Servicio misionero
-- **Jóvenes**: Servicio de jóvenes
+7. **Sincronización de Datos:**
 
-## 🔄 Flujo de Trabajo
+1. Utiliza **Firebase Firestore** como base de datos en la nube para almacenar y sincronizar los datos.
+2. Soporta un modo offline que guarda los datos localmente en el navegador y los sincroniza automáticamente cuando la conexión a internet se restablece.
+3. Muestra un indicador visual del estado de la conexión (online/sincronizado, offline, error de sincronización).
 
-### Para Ujieres
-1. **Login** con credenciales asignadas
-2. **Conteo** de asistencia por categorías
-3. **Agregar simpatizantes** con nombres específicos
-4. **Guardar** el conteo del servicio
 
-### Para Administradores
-1. **Dashboard** con estadísticas generales
-2. **Gestión completa** de usuarios, miembros y simpatizantes
-3. **Reportes avanzados** con múltiples filtros
-4. **Exportación** de datos en varios formatos
-5. **Análisis de tendencias** y rendimiento
 
-## 📱 Características Móviles
 
-- **Diseño responsive** optimizado para teléfonos
-- **Navegación táctil** intuitiva
-- **Botones grandes** para facilitar el uso
-- **Modo offline** para áreas con conectividad limitada
-- **Sincronización automática** al recuperar conexión
 
-## 🔒 Seguridad y Privacidad
+**Tecnologías Utilizadas:**
 
-- **Autenticación requerida** para acceso
-- **Roles y permisos** diferenciados
-- **Datos encriptados** en Firebase
-- **Almacenamiento local seguro** con IndexedDB
-- **Sin datos sensibles** en el código fuente
+- **Next.js (App Router):** Framework de React para construir la aplicación web.
+- **React:** Biblioteca para la interfaz de usuario.
+- **Firebase (Firestore):** Base de datos NoSQL en la nube para el almacenamiento y sincronización de datos.
+- **Tailwind CSS:** Framework CSS para el diseño y estilizado rápido y responsivo.
+- **shadcn/ui:** Componentes de interfaz de usuario pre-estilizados con Tailwind CSS para una apariencia moderna y consistente.
+- **Lucide React:** Biblioteca de iconos.
+- **date-fns:** Utilidad para el manejo de fechas.
 
-## 📈 Reportes Disponibles
 
-### CSV Export
-- Datos completos en formato tabular
-- Compatible con Excel/Google Sheets
-- Incluye nombres de asistentes
-
-### Informe Resumen
-- Estadísticas ejecutivas
-- Rankings de servicios y ujieres
-- Distribución porcentual
-
-### Informe Detallado
-- Análisis completo con todos los datos
-- Desglose por registro individual
-- Listas completas de asistentes
-- Formato profesional para presentaciones
-
-## 🛠️ Desarrollo y Contribución
-
-### Scripts Disponibles
-\`\`\`bash
-npm run dev          # Desarrollo
-npm run build        # Construcción para producción
-npm run start        # Servidor de producción
-npm run lint         # Linting del código
-\`\`\`
-
-### Estructura de Datos
-
-#### Registro de Asistencia
-\`\`\`typescript
-{
-  fecha: string
-  servicio: string
-  ujier: string[]
-  hermanos: number
-  hermanas: number
-  ninos: number
-  adolescentes: number
-  simpatizantes: number
-  total: number
-  simpatizantesAsistieron: Array<{id: string, nombre: string}>
-  miembrosAsistieron: {
-    hermanos: Array<{id: string, nombre: string}>
-    hermanas: Array<{id: string, nombre: string}>
-    ninos: Array<{id: string, nombre: string}>
-    adolescentes: Array<{id: string, nombre: string}>
-  }
-}
-\`\`\`
-
-## 🐛 Solución de Problemas
-
-### Problemas Comunes
-
-**Error de conexión a Firebase:**
-- Verificar variables de entorno
-- Comprobar configuración de Firebase
-- Revisar reglas de Firestore
-
-**Datos no se sincronizan:**
-- Verificar conexión a internet
-- Comprobar autenticación anónima
-- Revisar consola del navegador
-
-**Login no funciona:**
-- Verificar credenciales
-- Comprobar estado del usuario (activo/inactivo)
-- Revisar lista de usuarios en Firebase
-
-## 📞 Soporte
-
-Para soporte técnico o consultas:
-- Revisar la documentación
-- Comprobar issues conocidos
-- Contactar al administrador del sistema
-
-## 📄 Licencia
-
-Este proyecto está desarrollado específicamente para uso interno de la iglesia.
-
----
-
-**Desarrollado con ❤️ para la gestión eficiente de la asistencia en servicios religiosos**
+En resumen, la "Ujier App" es una solución robusta y fácil de usar para la gestión de la asistencia y los datos de la congregación, diseñada para ser eficiente tanto en línea como fuera de línea.

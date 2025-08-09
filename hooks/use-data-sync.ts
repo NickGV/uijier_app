@@ -760,6 +760,7 @@ const ujieresDelSistema = [
   "Juan Jose Abeldaño",
   "Gilberto Castaño",
   "Nicolas Gomez Velez",
+  "Cristian Gomez Velez",
   "Wilmar Rojas"
 ]
 
@@ -874,6 +875,13 @@ export function useDataSync() {
 
   /* NEW – wait for anonymous auth to finish before loading any Firestore data */
   useEffect(() => {
+    // Verificar que auth no sea null antes de usarlo
+    if (!auth) {
+      console.warn("⚠️ Firebase auth not available, skipping auth state listener")
+      setIsAuthReady(false) // Marcar como no autenticado
+      return
+    }
+
     const unsub = onAuthStateChanged(auth, () => {
       setIsAuthReady(true)
     })
@@ -896,6 +904,12 @@ export function useDataSync() {
       setMiembros(loadedMiembros)
       setHistorial(loadedHistorial)
       setUsuarios(loadedUsuarios)
+
+       if (!db) {
+        console.warn("⚠️ Firebase db not available, skipping listeners")
+        setIsLoading(false)
+        return
+      }
 
       // Set up real-time listeners for Firebase
       const unsubSimpatizantes = onSnapshot(
@@ -1025,7 +1039,7 @@ export function useDataSync() {
         fechaRegistro: new Date().toISOString().split("T")[0],
       }
       setSimpatizantes((prev) => [...prev, simpatizanteCompleto])
-      await saveLocalData("simpatizantes", [...simpatizantes, simpatizanteCompleto])
+      await saveLocalData("simpatizantes", [...simpatizantes, simpatianteCompleto])
 
       try {
         // Extract id before sending to Firestore
@@ -1250,33 +1264,6 @@ export function useDataSync() {
     },
     [usuarios],
   )
-  // Función específica para sincronizar miembros
-  const syncMiembros = useCallback(async () => {
-    if (!isOnline || !isAuthReady) {
-      console.log("No se puede sincronizar miembros: sin conexión o sin autenticación")
-      return { success: false, message: "Sin conexión a internet o sin autenticación" }
-    }
-
-    try {
-      setIsSyncing(true)
-      setSyncError(null)
-      
-      console.log("🔄 Iniciando sincronización de miembros...")
-      
-      // Sincronizar usando la función genérica
-      await syncCollection("miembros", miembros, setMiembros)
-      
-      console.log("✅ Sincronización de miembros completada")
-      return { success: true, message: "Miembros sincronizados correctamente" }
-    } catch (error) {
-      console.error("❌ Error sincronizando miembros:", error)
-      setSyncError("Error al sincronizar miembros")
-      return { success: false, message: "Error al sincronizar miembros" }
-    } finally {
-      setIsSyncing(false)
-    }
-  }, [isOnline, isAuthReady, miembros, syncCollection])
-
 
   return {
     simpatizantes,
@@ -1292,7 +1279,6 @@ export function useDataSync() {
     updateUsuario,
     deleteUsuario,
     authenticateUser,
-    syncMiembros, // Nueva función para sincronizar miembros
     isOnline,
     isSyncing,
     syncError,

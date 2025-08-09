@@ -1,51 +1,78 @@
-// lib/firebase.ts
-import { initializeApp, getApps, getApp } from "firebase/app"
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore"
-import { getAuth, signInAnonymously } from "firebase/auth" /* NEW */
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app"
+import { getFirestore, type Firestore } from "firebase/firestore"
+import { getAuth, type Auth } from "firebase/auth" // 1. Importar getAuth y Auth
 
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCjRKevP0Hyjl1qTjROuNjytoHOVdkVjKA",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "serujier-645cb.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "serujier-645cb",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "serujier-645cb.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "245323967896",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:245323967896:web:62f102f99b50b6d399cfed",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-S71EVS7HNX",
+}
+
+// Validate Firebase configuration
+const validateFirebaseConfig = () => {
+  const requiredValues = [
+    firebaseConfig.apiKey,
+    firebaseConfig.authDomain,
+    firebaseConfig.projectId,
+    firebaseConfig.storageBucket,
+    firebaseConfig.messagingSenderId,
+    firebaseConfig.appId,
+    firebaseConfig.measurementId,
+  ]
+
+  const missingValues = requiredValues.filter((value) => !value || value === "")
+
+  if (missingValues.length > 0) {
+    console.warn("⚠️ Firebase configuration incomplete. Missing values in firebaseConfig")
+    return false
+  }
+
+  console.log("✅ Firebase configuration validated successfully")
+  return true
 }
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
-const db = getFirestore(app)
+let app: FirebaseApp | null = null
+let db: Firestore | null = null
+let auth: Auth | null = null // 2. Declarar la variable auth
 
-/* NEW –- Auth + anonymous sign-in */
-const auth = getAuth(app)
-
-if (typeof window !== "undefined") {
-  // We’re in the browser, do the anonymous sign-in once
-  signInAnonymously(auth).catch((err) => {
-    console.error("Anonymous sign-in failed:", err)
-  })
-}
-
-// Enable offline persistence (IndexedDB)
-// This must be called once and before any other Firestore operations.
 try {
-  enableIndexedDbPersistence(db)
-    .then(() => {
-      console.log("Offline persistence enabled successfully!")
-    })
-    .catch((err) => {
-      if (err.code === "failed-precondition") {
-        console.warn(
-          "Multiple tabs open, persistence could not be enabled. Data will not be persisted offline across tabs.",
-        )
-      } else if (err.code === "unimplemented") {
-        console.warn("The current browser does not support all of the features required to enable persistence.")
-      } else {
-        console.error("Error enabling offline persistence:", err)
-      }
-    })
+  if (validateFirebaseConfig()) {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig)
+      console.log("✅ Firebase initialized successfully")
+    } else {
+      app = getApps()[0]
+    }
+
+    if (app) {
+      db = getFirestore(app)
+      auth = getAuth(app) // 3. Inicializar auth
+    }
+  } else {
+    console.log("📱 Running in local-only mode (Firebase not configured)")
+  }
 } catch (error) {
-  console.warn("Firestore persistence already enabled or failed to initialize:", error)
+  console.error("❌ Firebase initialization error:", error)
 }
 
+// Export Firebase instances
 export { db, auth }
+
+// Export Firebase status
+export const getFirebaseStatus = () => {
+  return {
+    isConfigured: validateFirebaseConfig(),
+    isConnected: !!db && !!auth,
+    app,
+    db,
+    auth,
+  }
+}
+
+export { validateFirebaseConfig }

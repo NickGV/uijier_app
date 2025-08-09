@@ -257,14 +257,11 @@ export function MiembrosScreen({ miembros, onSelectMiembro, onAddMiembro }: Miem
                     </Badge>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-3 bg-transparent"
-                  onClick={() => onSelectMiembro(miembro)}
-                >
-                  <Info className="w-4 h-4" />
-                </Button>
+                <div className="ml-4">
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => onSelectMiembro(miembro)}>
+                    Ver Perfil
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

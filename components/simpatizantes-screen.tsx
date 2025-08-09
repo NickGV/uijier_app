@@ -145,14 +145,11 @@ export function SimpatizantesScreen({
                     </Badge>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-2 sm:ml-3 bg-transparent h-8 w-8"
-                  onClick={() => onSelectSimpatizante(simpatizante)}
-                >
-                  <Info className="w-3 h-3 sm:w-4 sm:h-4" />
-                </Button>
+                <div className="ml-4">
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => onSelectSimpatizante(simpatizante)}>
+                    Ver Perfil
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

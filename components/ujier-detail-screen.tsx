@@ -1,241 +1,245 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Edit3, Save, Calendar, Shield, User, Key, ToggleLeft, ToggleRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { ArrowLeft, Save, Crown, UserCog, User, Eye, EyeOff } from "lucide-react"
 
 interface UjierDetailScreenProps {
   usuario: any
   onBack: () => void
   onUpdateUsuario: (id: string, data: any) => void
+  currentUser: any
 }
 
-export function UjierDetailScreen({ usuario, onBack, onUpdateUsuario }: UjierDetailScreenProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedData, setEditedData] = useState({
-    nombre: usuario?.nombre || "",
-    rol: usuario?.rol || "ujier",
-    activo: usuario?.activo || true,
+export function UjierDetailScreen({ usuario, onBack, onUpdateUsuario, currentUser }: UjierDetailScreenProps) {
+  const [editedUsuario, setEditedUsuario] = useState({
+    nombre: usuario.nombre,
+    password: usuario.password,
+    rol: usuario.rol,
+    activo: usuario.activo,
   })
 
+  const isAdmin = currentUser?.rol === "admin"
+  const isDirectiva = currentUser?.rol === "directiva"
+
+  // Determinar qué campos puede editar cada rol
+  const canEditFullProfile = isAdmin
+  const canToggleStatus = (isAdmin || isDirectiva) && !(usuario.rol === "admin" || usuario.rol === "directiva") // No se pueden desactivar admins o directiva
+
   const handleSave = () => {
-    // Regenerar password si cambió el nombre
-    const primerNombre = editedData.nombre.split(" ")[0].toLowerCase()
-    const dataToSave = {
-      ...editedData,
-      password: primerNombre + ".",
+    const dataToUpdate: any = {}
+
+    if (canEditFullProfile) {
+      // Admin puede cambiar todo
+      dataToUpdate.nombre = editedUsuario.nombre
+      dataToUpdate.password = editedUsuario.password
+      dataToUpdate.rol = editedUsuario.rol
+      dataToUpdate.activo = editedUsuario.activo
+    } else if (canToggleStatus) {
+      // Directiva solo puede cambiar el estado activo
+      dataToUpdate.activo = editedUsuario.activo
     }
-    onUpdateUsuario(usuario.id, dataToSave)
-    setIsEditing(false)
+
+    onUpdateUsuario(usuario.id, dataToUpdate)
+    onBack()
   }
 
-  const handleCancel = () => {
-    setEditedData({
-      nombre: usuario?.nombre || "",
-      rol: usuario?.rol || "ujier",
-      activo: usuario?.activo || true,
-    })
-    setIsEditing(false)
-  }
-
-  const toggleEstado = () => {
-    const newEstado = !editedData.activo
-    setEditedData({ ...editedData, activo: newEstado })
-    if (!isEditing) {
-      onUpdateUsuario(usuario.id, { activo: newEstado })
+  const getRoleIcon = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return <Crown className="w-6 h-6 text-yellow-600" />
+      case "directiva":
+        return <UserCog className="w-6 h-6 text-blue-600" />
+      default:
+        return <User className="w-6 h-6 text-gray-600" />
     }
   }
 
-  const getRolIcon = (rol: string) => {
-    return rol === "admin" ? <Shield className="w-6 h-6" /> : <User className="w-6 h-6" />
+  const getRoleBadgeColor = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "directiva":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
   }
 
-  const getRolColor = (rol: string) => {
-    return rol === "admin" ? "from-blue-600 to-blue-700" : "from-green-600 to-green-700"
+  const getRoleDisplayName = (rol: string) => {
+    switch (rol) {
+      case "admin":
+        return "Administrador"
+      case "directiva":
+        return "Directiva"
+      default:
+        return "Ujier"
+    }
   }
-
-  const getRolLabel = (rol: string) => {
-    return rol === "admin" ? "Administrador" : "Ujier"
-  }
-
-  if (!usuario) return null
 
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver
+        </Button>
+        <div className="flex items-center gap-3">
+          {getRoleIcon(usuario.rol)}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{usuario.nombre}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge className={getRoleBadgeColor(usuario.rol)}>{getRoleDisplayName(usuario.rol)}</Badge>
+              <Badge variant={usuario.activo ? "default" : "secondary"}>{usuario.activo ? "Activo" : "Inactivo"}</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Permission Notice */}
+      {!canEditFullProfile && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-orange-700">
+              <span className="text-sm font-medium">
+                ⚠️{" "}
+                {isDirectiva
+                  ? "Permisos limitados: Solo puedes activar/desactivar usuarios regulares"
+                  : "Sin permisos de edición"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User Details Form */}
+      <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={onBack} className="p-2">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <CardTitle className="text-lg font-semibold text-gray-800">Detalle del Usuario</CardTitle>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Profile Card */}
-      <Card
-        className={`bg-gradient-to-r ${getRolColor(isEditing ? editedData.rol : usuario.rol)} text-white border-0 shadow-lg`}
-      >
-        <CardContent className="p-6 text-center">
-          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            {getRolIcon(isEditing ? editedData.rol : usuario.rol)}
-          </div>
-          <h2 className="text-xl font-bold mb-1">{isEditing ? editedData.nombre : usuario.nombre}</h2>
-          <p className="text-white/80">{getRolLabel(isEditing ? editedData.rol : usuario.rol)}</p>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <Badge
-              className={`${(isEditing ? editedData.activo : usuario.activo) ? "bg-emerald-500" : "bg-red-500"} text-white border-0`}
-            >
-              {(isEditing ? editedData.activo : usuario.activo) ? "Activo" : "Inactivo"}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Information */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-base font-semibold text-gray-800">Información del Usuario</CardTitle>
-            {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                <Edit3 className="w-4 h-4 mr-2" />
-                Editar
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleCancel}>
-                  Cancelar
-                </Button>
-                <Button size="sm" onClick={handleSave} className="bg-slate-600 hover:bg-slate-700">
-                  <Save className="w-4 h-4 mr-2" />
-                  Guardar
-                </Button>
-              </div>
-            )}
-          </div>
+          <CardTitle>Información del Usuario</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Nombre */}
           <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-              <User className="w-4 h-4" />
-              Nombre Completo
-            </label>
-            {isEditing ? (
-              <Input
-                value={editedData.nombre}
-                onChange={(e) => setEditedData({ ...editedData, nombre: e.target.value })}
-                className="rounded-lg"
-              />
-            ) : (
-              <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">{usuario.nombre}</p>
-            )}
+            <Label htmlFor="nombre">Nombre Completo</Label>
+            <Input
+              id="nombre"
+              value={editedUsuario.nombre}
+              onChange={(e) => setEditedUsuario({ ...editedUsuario, nombre: e.target.value })}
+              disabled={!canEditFullProfile}
+              className={!canEditFullProfile ? "bg-gray-50" : ""}
+            />
           </div>
 
+          {/* Contraseña */}
           <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-              <Shield className="w-4 h-4" />
-              Rol
-            </label>
-            {isEditing ? (
-              <Select value={editedData.rol} onValueChange={(value) => setEditedData({ ...editedData, rol: value })}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ujier">Ujier</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">{getRolLabel(usuario.rol)}</p>
-            )}
+            <Label htmlFor="password">Contraseña</Label>
+            <Input
+              id="password"
+              type="password"
+              value={editedUsuario.password}
+              onChange={(e) => setEditedUsuario({ ...editedUsuario, password: e.target.value })}
+              disabled={!canEditFullProfile}
+              className={!canEditFullProfile ? "bg-gray-50" : ""}
+            />
           </div>
 
+          {/* Rol */}
           <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-              <Key className="w-4 h-4" />
-              Contraseña
-            </label>
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-gray-800 font-mono">
-                {isEditing ? editedData.nombre.split(" ")[0].toLowerCase() + "." : usuario.password}
+            <Label htmlFor="rol">Rol</Label>
+            <Select
+              value={editedUsuario.rol}
+              onValueChange={(value) => setEditedUsuario({ ...editedUsuario, rol: value })}
+              disabled={!canEditFullProfile}
+            >
+              <SelectTrigger className={!canEditFullProfile ? "bg-gray-50" : ""}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ujier">Ujier</SelectItem>
+                <SelectItem value="directiva">Directiva</SelectItem>
+                <SelectItem value="admin">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Estado Activo */}
+          <div>
+            <Label htmlFor="activo">Estado</Label>
+            <Select
+              value={editedUsuario.activo ? "activo" : "inactivo"}
+              onValueChange={(value) => setEditedUsuario({ ...editedUsuario, activo: value === "activo" })}
+              disabled={!canToggleStatus}
+            >
+              <SelectTrigger className={!canToggleStatus ? "bg-gray-50" : ""}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activo">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-green-600" />
+                    Activo
+                  </div>
+                </SelectItem>
+                <SelectItem value="inactivo">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="w-4 h-4 text-red-600" />
+                    Inactivo
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {!canToggleStatus && (
+              <p className="text-xs text-gray-500 mt-1">
+                {usuario.rol === "admin" || usuario.rol === "directiva"
+                  ? "Los administradores y directiva no pueden ser desactivados"
+                  : "Sin permisos para cambiar el estado"}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Se genera automáticamente: primer nombre + punto</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">Estado del Usuario</label>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-800">
-                  {(isEditing ? editedData.activo : usuario.activo) ? "Activo" : "Inactivo"}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {(isEditing ? editedData.activo : usuario.activo)
-                    ? "Puede iniciar sesión en la aplicación"
-                    : "No puede acceder a la aplicación"}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleEstado}
-                className={`${
-                  (isEditing ? editedData.activo : usuario.activo)
-                    ? "border-red-200 text-red-700 hover:bg-red-50"
-                    : "border-green-200 text-green-700 hover:bg-green-50"
-                }`}
-              >
-                {(isEditing ? editedData.activo : usuario.activo) ? (
-                  <ToggleRight className="w-4 h-4 mr-2" />
-                ) : (
-                  <ToggleLeft className="w-4 h-4 mr-2" />
-                )}
-                {(isEditing ? editedData.activo : usuario.activo) ? "Desactivar" : "Activar"}
-              </Button>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Registration Info */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
+      {/* User Information */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Información de Registro
-          </CardTitle>
+          <CardTitle>Información Adicional</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Fecha de creación:</span>
-              <Badge variant="outline">
-                {new Date(usuario.fechaCreacion).toLocaleDateString("es-ES", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Días desde creación:</span>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {Math.floor((new Date().getTime() - new Date(usuario.fechaCreacion).getTime()) / (1000 * 60 * 60 * 24))}{" "}
-                días
-              </Badge>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">ID de Usuario:</span>
+            <span className="text-sm font-mono">{usuario.id}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Fecha de Creación:</span>
+            <span className="text-sm">{usuario.fechaCreacion}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Permisos:</span>
+            <div className="text-sm">
+              {usuario.rol === "admin" && "Acceso completo al sistema"}
+              {usuario.rol === "directiva" && "Dashboard, conteo, simpatizantes, historial, usuarios (limitado)"}
+              {usuario.rol === "ujier" && "Solo conteo y simpatizantes"}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Action Buttons */}
+      <div className="flex gap-4">
+        <Button onClick={handleSave} className="flex-1" disabled={!canEditFullProfile && !canToggleStatus}>
+          <Save className="w-4 h-4 mr-2" />
+          Guardar Cambios
+        </Button>
+        <Button variant="outline" onClick={onBack} className="flex-1 bg-transparent">
+          Cancelar
+        </Button>
+      </div>
     </div>
   )
 }
