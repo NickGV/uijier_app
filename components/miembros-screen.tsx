@@ -90,16 +90,16 @@ export function MiembrosScreen({ miembros, onSelectMiembro, onAddMiembro }: Miem
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-2 sm:p-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <UserCheck className="w-5 h-5" />
+        <CardHeader className="px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             Miembros de la Iglesia
           </CardTitle>
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+          <div className="flex items-center justify-between mt-2">
+            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-xs">
               {filteredMiembros.length} miembros
             </Badge>
           </div>
@@ -108,22 +108,22 @@ export function MiembrosScreen({ miembros, onSelectMiembro, onAddMiembro }: Miem
 
       {/* Statistics */}
       <Card className="bg-gradient-to-r from-slate-600 to-slate-700 text-white border-0 shadow-lg">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-4 gap-2 text-center">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-4 gap-1 sm:gap-2 text-center">
             <div>
-              <div className="text-lg font-bold">{contarPorCategoria("hermano")}</div>
+              <div className="text-base sm:text-lg font-bold">{contarPorCategoria("hermano")}</div>
               <div className="text-slate-200 text-xs">Hermanos</div>
             </div>
             <div>
-              <div className="text-lg font-bold">{contarPorCategoria("hermana")}</div>
+              <div className="text-base sm:text-lg font-bold">{contarPorCategoria("hermana")}</div>
               <div className="text-slate-200 text-xs">Hermanas</div>
             </div>
             <div>
-              <div className="text-lg font-bold">{contarPorCategoria("nino")}</div>
+              <div className="text-base sm:text-lg font-bold">{contarPorCategoria("nino")}</div>
               <div className="text-slate-200 text-xs">Niños</div>
             </div>
             <div>
-              <div className="text-lg font-bold">{contarPorCategoria("adolescente")}</div>
+              <div className="text-base sm:text-lg font-bold">{contarPorCategoria("adolescente")}</div>
               <div className="text-slate-200 text-xs">Adolesc.</div>
             </div>
           </div>
@@ -257,14 +257,11 @@ export function MiembrosScreen({ miembros, onSelectMiembro, onAddMiembro }: Miem
                     </Badge>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-3 bg-transparent"
-                  onClick={() => onSelectMiembro(miembro)}
-                >
-                  <Info className="w-4 h-4" />
-                </Button>
+                <div className="ml-4">
+                  <Button variant="outline" size="sm" className="text-xs bg-transparent" onClick={() => onSelectMiembro(miembro)}>
+                    Ver Perfil
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

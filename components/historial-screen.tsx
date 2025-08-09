@@ -5,7 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Calendar, Filter, TrendingUp, Eye, Users, Download, FileText, BarChart3, CalendarDays } from "lucide-react"
+import {
+  Calendar,
+  Filter,
+  TrendingUp,
+  Eye,
+  Users,
+  Download,
+  FileText,
+  BarChart3,
+  CalendarDays,
+  Search,
+} from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface HistorialScreenProps {
@@ -18,11 +29,16 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
   const [fechaInicio, setFechaInicio] = useState("")
   const [fechaFin, setFechaFin] = useState("")
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const filteredData = historial.filter((record) => {
     const servicioMatch =
       filtroServicio === "todos" || record.servicio.toLowerCase().includes(filtroServicio.toLowerCase())
-    const ujierMatch = filtroUjier === "todos" || record.ujier === filtroUjier
+    const ujierMatch = filtroUjier === "todos" || record.ujier.includes(filtroUjier) // ujier is now an array
+    const searchTermMatch =
+      searchTerm === "" ||
+      record.servicio.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.ujier.some((ujier: string) => ujier.toLowerCase().includes(searchTerm.toLowerCase()))
 
     // Filtro por rango de fechas
     let fechaMatch = true
@@ -38,10 +54,11 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
       }
     }
 
-    return servicioMatch && ujierMatch && fechaMatch
+    return servicioMatch && ujierMatch && fechaMatch && searchTermMatch
   })
 
-  const chartData = filteredData.slice(0, 7).reverse()
+  // Mostrar hasta 10 registros en la gráfica para mejor visualización
+  const chartData = filteredData.slice(0, 10).reverse()
   const maxValue = Math.max(...chartData.map((d) => d.total), 1)
 
   // Estadísticas para el informe
@@ -52,6 +69,44 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
       : 0
   const mayorAsistencia = filteredData.length > 0 ? Math.max(...filteredData.map((r) => r.total)) : 0
   const menorAsistencia = filteredData.length > 0 ? Math.min(...filteredData.map((r) => r.total)) : 0
+
+  // Estadísticas adicionales por categoría
+  const totalHermanos = filteredData.reduce((sum, record) => sum + record.hermanos, 0)
+  const totalHermanas = filteredData.reduce((sum, record) => sum + record.hermanas, 0)
+  const totalNinos = filteredData.reduce((sum, record) => sum + record.ninos, 0)
+  const totalAdolescentes = filteredData.reduce((sum, record) => sum + record.adolescentes, 0)
+  const totalSimpatizantes = filteredData.reduce((sum, record) => sum + record.simpatizantes, 0)
+  const granTotal = totalHermanos + totalHermanas + totalNinos + totalAdolescentes + totalSimpatizantes
+
+  // Estadísticas por servicio
+  const servicioStats = filteredData.reduce(
+    (acc, record) => {
+      const servicio = record.servicio
+      if (!acc[servicio]) {
+        acc[servicio] = { count: 0, total: 0 }
+      }
+      acc[servicio].count++
+      acc[servicio].total += record.total
+      return acc
+    },
+    {} as Record<string, { count: number; total: number }>,
+  )
+
+  // Estadísticas por ujier
+  const ujierStats = filteredData.reduce(
+    (acc, record) => {
+      const ujieres = Array.isArray(record.ujier) ? record.ujier : [record.ujier]
+      ujieres.forEach((ujier: string) => {
+        if (!acc[ujier]) {
+          acc[ujier] = { count: 0, total: 0 }
+        }
+        acc[ujier].count++
+        acc[ujier].total += record.total
+      })
+      return acc
+    },
+    {} as Record<string, { count: number; total: number }>,
+  )
 
   const clearDateFilters = () => {
     setFechaInicio("")
@@ -67,11 +122,19 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
     setFechaFin(today.toISOString().split("T")[0])
   }
 
+  const clearAllFilters = () => {
+    setFiltroServicio("todos")
+    setFiltroUjier("todos")
+    setFechaInicio("")
+    setFechaFin("")
+    setSearchTerm("")
+  }
+
   const downloadCSV = () => {
     const headers = [
       "Fecha",
       "Servicio",
-      "Ujier",
+      "Ujier(es)",
       "Hermanos",
       "Hermanas",
       "Niños",
@@ -79,6 +142,10 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
       "Simpatizantes",
       "Total",
       "Simpatizantes Asistieron",
+      "Hermanos Asistieron",
+      "Hermanas Asistieron",
+      "Niños Asistieron",
+      "Adolescentes Asistieron",
     ]
 
     const csvContent = [
@@ -87,7 +154,7 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
         [
           record.fecha,
           `"${record.servicio}"`,
-          `"${record.ujier}"`,
+          `"${Array.isArray(record.ujier) ? record.ujier.join("; ") : record.ujier}"`,
           record.hermanos,
           record.hermanas,
           record.ninos,
@@ -95,6 +162,10 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
           record.simpatizantes,
           record.total,
           `"${record.simpatizantesAsistieron?.map((s: any) => s.nombre).join("; ") || ""}"`,
+          `"${record.miembrosAsistieron?.hermanos?.map((m: any) => m.nombre).join("; ") || ""}"`,
+          `"${record.miembrosAsistieron?.hermanas?.map((m: any) => m.nombre).join("; ") || ""}"`,
+          `"${record.miembrosAsistieron?.ninos?.map((m: any) => m.nombre).join("; ") || ""}"`,
+          `"${record.miembrosAsistieron?.adolescentes?.map((m: any) => m.nombre).join("; ") || ""}"`,
         ].join(","),
       ),
     ].join("\n")
@@ -110,38 +181,125 @@ export function HistorialScreen({ historial }: HistorialScreenProps) {
     document.body.removeChild(link)
   }
 
-  const downloadReport = () => {
+  const downloadDetailedReport = () => {
     const reportContent = `
-INFORME DE ASISTENCIA
-=====================
+INFORME DETALLADO DE ASISTENCIA
+===============================
 
-Filtros Aplicados:
+FILTROS APLICADOS:
 - Servicio: ${filtroServicio === "todos" ? "Todos" : filtroServicio}
 - Ujier: ${filtroUjier === "todos" ? "Todos" : filtroUjier}
 - Fecha inicio: ${fechaInicio || "Sin filtro"}
 - Fecha fin: ${fechaFin || "Sin filtro"}
-- Fecha de generación: ${new Date().toLocaleDateString("es-ES")}
+- Búsqueda: ${searchTerm || "Sin filtro"}
+- Fecha de generación: ${new Date().toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
 
-ESTADÍSTICAS GENERALES:
-- Total de registros: ${totalRegistros}
-- Promedio de asistencia: ${promedioAsistencia} personas
-- Mayor asistencia: ${mayorAsistencia} personas
-- Menor asistencia: ${menorAsistencia} personas
+RESUMEN EJECUTIVO:
+==================
+- Total de registros analizados: ${totalRegistros}
+- Período analizado: ${fechaInicio && fechaFin ? `${fechaInicio} a ${fechaFin}` : "Todos los registros"}
+- Gran total de asistentes: ${granTotal} personas
+- Promedio de asistencia por servicio: ${promedioAsistencia} personas
+- Mayor asistencia registrada: ${mayorAsistencia} personas
+- Menor asistencia registrada: ${menorAsistencia} personas
+
+ESTADÍSTICAS POR CATEGORÍA:
+===========================
+- Hermanos: ${totalHermanos} (${((totalHermanos / granTotal) * 100).toFixed(1)}%)
+- Hermanas: ${totalHermanas} (${((totalHermanas / granTotal) * 100).toFixed(1)}%)
+- Niños: ${totalNinos} (${((totalNinos / granTotal) * 100).toFixed(1)}%)
+- Adolescentes: ${totalAdolescentes} (${((totalAdolescentes / granTotal) * 100).toFixed(1)}%)
+- Simpatizantes: ${totalSimpatizantes} (${((totalSimpatizantes / granTotal) * 100).toFixed(1)}%)
+
+ESTADÍSTICAS POR TIPO DE SERVICIO:
+===================================
+${Object.entries(servicioStats)
+  .sort(([, a], [, b]) => b.total - a.total)
+  .map(
+    ([servicio, stats]) =>
+      `- ${servicio}: ${stats.count} servicios, ${stats.total} asistentes total (promedio: ${Math.round(stats.total / stats.count)})`,
+  )
+  .join("\n")}
+
+ESTADÍSTICAS POR UJIER:
+=======================
+${Object.entries(ujierStats)
+  .sort(([, a], [, b]) => b.total - a.total)
+  .map(
+    ([ujier, stats]) =>
+      `- ${ujier}: ${stats.count} servicios, ${stats.total} asistentes total (promedio: ${Math.round(stats.total / stats.count)})`,
+  )
+  .join("\n")}
 
 DETALLE DE REGISTROS:
+=====================
 ${filteredData
+  .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
   .map(
-    (record) => `
-Fecha: ${record.fecha}
-Servicio: ${record.servicio}
-Ujier: ${record.ujier}
-Hermanos: ${record.hermanos} | Hermanas: ${record.hermanas} | Niños: ${record.ninos} | Adolescentes: ${record.adolescentes} | Simpatizantes: ${record.simpatizantes}
-Total: ${record.total}
-Simpatizantes que asistieron: ${record.simpatizantesAsistieron?.map((s: any) => s.nombre).join(", ") || "Ninguno"}
-${"=".repeat(50)}
+    (record, index) => `
+${index + 1}. REGISTRO DEL ${new Date(record.fecha)
+      .toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      .toUpperCase()}
+   Servicio: ${record.servicio}
+   Ujier(es): ${Array.isArray(record.ujier) ? record.ujier.join(", ") : record.ujier}
+   
+   CONTEO POR CATEGORÍAS:
+   - Hermanos: ${record.hermanos}
+   - Hermanas: ${record.hermanas}
+   - Niños: ${record.ninos}
+   - Adolescentes: ${record.adolescentes}
+   - Simpatizantes: ${record.simpatizantes}
+   - TOTAL: ${record.total}
+   
+   ASISTENTES CON NOMBRE:
+   ${
+     record.simpatizantesAsistieron && record.simpatizantesAsistieron.length > 0
+       ? `Simpatizantes (${record.simpatizantesAsistieron.length}): ${record.simpatizantesAsistieron.map((s: any) => s.nombre).join(", ")}`
+       : "Simpatizantes: Ninguno registrado"
+   }
+   ${
+     record.miembrosAsistieron?.hermanos?.length > 0
+       ? `Hermanos (${record.miembrosAsistieron.hermanos.length}): ${record.miembrosAsistieron.hermanos.map((m: any) => m.nombre).join(", ")}`
+       : "Hermanos: Ninguno registrado"
+   }
+   ${
+     record.miembrosAsistieron?.hermanas?.length > 0
+       ? `Hermanas (${record.miembrosAsistieron.hermanas.length}): ${record.miembrosAsistieron.hermanas.map((m: any) => m.nombre).join(", ")}`
+       : "Hermanas: Ninguno registrado"
+   }
+   ${
+     record.miembrosAsistieron?.ninos?.length > 0
+       ? `Niños (${record.miembrosAsistieron.ninos.length}): ${record.miembrosAsistieron.ninos.map((m: any) => m.nombre).join(", ")}`
+       : "Niños: Ninguno registrado"
+   }
+   ${
+     record.miembrosAsistieron?.adolescentes?.length > 0
+       ? `Adolescentes (${record.miembrosAsistieron.adolescentes.length}): ${record.miembrosAsistieron.adolescentes.map((m: any) => m.nombre).join(", ")}`
+       : "Adolescentes: Ninguno registrado"
+   }
+
+${"=".repeat(80)}
 `,
   )
   .join("")}
+
+NOTAS FINALES:
+==============
+- Este informe fue generado automáticamente por el Sistema de Conteo de Asistencia
+- Los datos reflejan únicamente los registros que cumplen con los filtros aplicados
+- Para consultas adicionales, contacte al administrador del sistema
     `.trim()
 
     const blob = new Blob([reportContent], { type: "text/plain;charset=utf-8;" })
@@ -155,37 +313,105 @@ ${"=".repeat(50)}
     document.body.removeChild(link)
   }
 
+  const downloadSummaryReport = () => {
+    const reportContent = `
+INFORME RESUMEN DE ASISTENCIA
+=============================
+
+Período: ${fechaInicio && fechaFin ? `${fechaInicio} a ${fechaFin}` : "Todos los registros"}
+Generado: ${new Date().toLocaleDateString("es-ES")} a las ${new Date().toLocaleTimeString("es-ES")}
+
+RESUMEN GENERAL:
+- Total registros: ${totalRegistros}
+- Total asistentes: ${granTotal}
+- Promedio por servicio: ${promedioAsistencia}
+- Máximo: ${mayorAsistencia} | Mínimo: ${menorAsistencia}
+
+DISTRIBUCIÓN POR CATEGORÍA:
+- Hermanos: ${totalHermanos} (${((totalHermanos / granTotal) * 100).toFixed(1)}%)
+- Hermanas: ${totalHermanas} (${((totalHermanas / granTotal) * 100).toFixed(1)}%)
+- Niños: ${totalNinos} (${((totalNinos / granTotal) * 100).toFixed(1)}%)
+- Adolescentes: ${totalAdolescentes} (${((totalAdolescentes / granTotal) * 100).toFixed(1)}%)
+- Simpatizantes: ${totalSimpatizantes} (${((totalSimpatizantes / granTotal) * 100).toFixed(1)}%)
+
+TOP SERVICIOS:
+${Object.entries(servicioStats)
+  .sort(([, a], [, b]) => b.total - a.total)
+  .slice(0, 5)
+  .map(([servicio, stats], index) => `${index + 1}. ${servicio}: ${stats.total} asistentes (${stats.count} servicios)`)
+  .join("\n")}
+
+TOP UJIERES:
+${Object.entries(ujierStats)
+  .sort(([, a], [, b]) => b.total - a.total)
+  .slice(0, 5)
+  .map(([ujier, stats], index) => `${index + 1}. ${ujier}: ${stats.total} asistentes (${stats.count} servicios)`)
+  .join("\n")}
+    `.trim()
+
+    const blob = new Blob([reportContent], { type: "text/plain;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `resumen_asistencia_${new Date().toISOString().split("T")[0]}.txt`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-2 sm:p-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+        <CardHeader className="px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             Historial de Asistencia
           </CardTitle>
           <div className="flex items-center justify-between mt-2">
-            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+            <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-xs">
               {filteredData.length} registros encontrados
             </Badge>
+            {(filtroServicio !== "todos" || filtroUjier !== "todos" || fechaInicio || fechaFin || searchTerm) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-xs bg-transparent border-red-200 text-red-600 hover:bg-red-50"
+              >
+                Limpiar Filtros
+              </Button>
+            )}
           </div>
         </CardHeader>
       </Card>
 
       {/* Filters */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="p-3 sm:p-4 space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Filter className="w-4 h-4 text-gray-600" />
             <span className="text-sm font-medium text-gray-700">Filtros</span>
           </div>
 
+          {/* Búsqueda general */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4" />
+            <Input
+              placeholder="Buscar por servicio o ujier..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 sm:pl-10 rounded-lg h-8 sm:h-9 text-xs sm:text-sm"
+            />
+          </div>
+
           {/* Filtros básicos */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">Tipo de Servicio</label>
+              <label className="text-xs text-gray-600 mb-1 block">Servicio</label>
               <Select value={filtroServicio} onValueChange={setFiltroServicio}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -194,6 +420,7 @@ ${"=".repeat(50)}
                   <SelectItem value="oración y enseñanza">Oración y Enseñanza</SelectItem>
                   <SelectItem value="hermanas dorcas">Hermanas Dorcas</SelectItem>
                   <SelectItem value="evangelismo">Evangelismo</SelectItem>
+                  <SelectItem value="misionero">Misionero</SelectItem>
                   <SelectItem value="jóvenes">Jóvenes</SelectItem>
                 </SelectContent>
               </Select>
@@ -202,30 +429,16 @@ ${"=".repeat(50)}
             <div>
               <label className="text-xs text-gray-600 mb-1 block">Ujier</label>
               <Select value={filtroUjier} onValueChange={setFiltroUjier}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="Wilmar Rojas">Wilmar Rojas</SelectItem>
-                  <SelectItem value="Juan Caldera">Juan Caldera</SelectItem>
-                  <SelectItem value="Joaquin Velez">Joaquin Velez</SelectItem>
-                  <SelectItem value="Yarissa Rojas">Yarissa Rojas</SelectItem>
-                  <SelectItem value="Cristian Gomez">Cristian Gomez</SelectItem>
-                  <SelectItem value="Hector Gaviria">Hector Gaviria</SelectItem>
-                  <SelectItem value="Ivan Caro">Ivan Caro</SelectItem>
-                  <SelectItem value="Jhon echavarria">Jhon echavarria</SelectItem>
-                  <SelectItem value="Karen Cadavid">Karen Cadavid</SelectItem>
-                  <SelectItem value="Carolina Monsalve">Carolina Monsalve</SelectItem>
-                  <SelectItem value="Marta Verona">Marta Verona</SelectItem>
-                  <SelectItem value="Nicolas Gömez">Nicolas Gömez</SelectItem>
-                  <SelectItem value="Oraliz Fernåndez">Oraliz Fernåndez</SelectItem>
-                  <SelectItem value="Santiago Graciano">Santiago Graciano</SelectItem>
-                  <SelectItem value="Suri Vélez">Suri Vélez</SelectItem>
-                  <SelectItem value="Wilmar Vélez">Wilmar Vélez</SelectItem>
-                  <SelectItem value="Diana Suarez">Diana Suarez</SelectItem>
-                  <SelectItem value="José perdomo">José perdomo</SelectItem>
-                  <SelectItem value="Carolina Caro">Carolina Caro</SelectItem>
+                  {Array.from(new Set(historial.flatMap((record) => record.ujier))).map((ujier) => (
+                    <SelectItem key={ujier} value={ujier}>
+                      {ujier}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -270,14 +483,14 @@ ${"=".repeat(50)}
             </div>
 
             {/* Campos de fecha */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-600 mb-1 block">Fecha Inicio</label>
                 <Input
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="h-9 text-sm"
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
               <div>
@@ -286,7 +499,7 @@ ${"=".repeat(50)}
                   type="date"
                   value={fechaFin}
                   onChange={(e) => setFechaFin(e.target.value)}
-                  className="h-9 text-sm"
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
             </div>
@@ -310,25 +523,52 @@ ${"=".repeat(50)}
       {/* Statistics Summary */}
       {filteredData.length > 0 && (
         <Card className="bg-gradient-to-r from-slate-600 to-slate-700 text-white border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="p-3 sm:p-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">{promedioAsistencia}</div>
-                <div className="text-slate-200 text-sm">Promedio</div>
+                <div className="text-xl sm:text-2xl font-bold">{promedioAsistencia}</div>
+                <div className="text-slate-200 text-xs sm:text-sm">Promedio</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{totalRegistros}</div>
-                <div className="text-slate-200 text-sm">Registros</div>
+                <div className="text-xl sm:text-2xl font-bold">{totalRegistros}</div>
+                <div className="text-slate-200 text-xs sm:text-sm">Registros</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-500">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-500">
               <div className="text-center">
-                <div className="text-lg font-semibold">{mayorAsistencia}</div>
+                <div className="text-base sm:text-lg font-semibold">{mayorAsistencia}</div>
                 <div className="text-slate-200 text-xs">Máximo</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-semibold">{menorAsistencia}</div>
+                <div className="text-base sm:text-lg font-semibold">{menorAsistencia}</div>
                 <div className="text-slate-200 text-xs">Mínimo</div>
+              </div>
+            </div>
+
+            {/* Totales por categoría */}
+            <div className="mt-3 pt-3 border-t border-slate-500">
+              <div className="text-xs text-slate-200 mb-2 text-center">Total General: {granTotal} asistentes</div>
+              <div className="grid grid-cols-5 gap-1 text-center">
+                <div>
+                  <div className="text-sm font-semibold">{totalHermanos}</div>
+                  <div className="text-xs text-slate-300">H</div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{totalHermanas}</div>
+                  <div className="text-xs text-slate-300">M</div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{totalNinos}</div>
+                  <div className="text-xs text-slate-300">N</div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{totalAdolescentes}</div>
+                  <div className="text-xs text-slate-300">A</div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{totalSimpatizantes}</div>
+                  <div className="text-xs text-slate-300">S</div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -343,24 +583,33 @@ ${"=".repeat(50)}
               <Download className="w-4 h-4 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">Descargar Informes</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={downloadCSV}
-                className="bg-transparent border-green-200 text-green-700 hover:bg-green-50"
+                className="bg-transparent border-green-200 text-green-700 hover:bg-green-50 text-xs"
               >
-                <FileText className="w-4 h-4 mr-2" />
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 CSV
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={downloadReport}
-                className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50"
+                onClick={downloadSummaryReport}
+                className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50 text-xs"
               >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Informe
+                <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Resumen
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadDetailedReport}
+                className="bg-transparent border-purple-200 text-purple-700 hover:bg-purple-50 text-xs"
+              >
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Detallado
               </Button>
             </div>
           </CardContent>
@@ -380,7 +629,7 @@ ${"=".repeat(50)}
             <div className="space-y-4">
               {/* Chart */}
               <div className="relative">
-                <div className="flex items-end justify-between h-40 gap-1 bg-gradient-to-t from-gray-50 to-transparent p-4 rounded-lg">
+                <div className="flex items-end justify-between h-40 gap-2 bg-gradient-to-t from-gray-50 to-transparent p-2 rounded-lg">
                   {chartData.map((data, index) => (
                     <div key={data.id} className="flex flex-col items-center flex-1 group">
                       <div className="relative w-full flex flex-col items-center">
@@ -412,15 +661,6 @@ ${"=".repeat(50)}
                       </div>
                     </div>
                   ))}
-                </div>
-
-                {/* Y-axis labels */}
-                <div className="absolute left-0 top-4 bottom-16 flex flex-col justify-between text-xs text-gray-400">
-                  <span>{maxValue}</span>
-                  <span>{Math.round(maxValue * 0.75)}</span>
-                  <span>{Math.round(maxValue * 0.5)}</span>
-                  <span>{Math.round(maxValue * 0.25)}</span>
-                  <span>0</span>
                 </div>
               </div>
 
@@ -474,7 +714,9 @@ ${"=".repeat(50)}
                         year: "numeric",
                       })}
                     </div>
-                    <div className="text-sm text-gray-600">{record.ujier}</div>
+                    <div className="text-sm text-gray-600">
+                      {Array.isArray(record.ujier) ? record.ujier.join(", ") : record.ujier}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-slate-700">{record.total}</div>
@@ -560,8 +802,10 @@ ${"=".repeat(50)}
                   <div className="font-semibold">{selectedRecord.servicio}</div>
                 </div>
                 <div>
-                  <span className="text-gray-600">Ujier:</span>
-                  <div className="font-semibold">{selectedRecord.ujier}</div>
+                  <span className="text-gray-600">Ujier(es):</span>
+                  <div className="font-semibold">
+                    {Array.isArray(selectedRecord.ujier) ? selectedRecord.ujier.join(", ") : selectedRecord.ujier}
+                  </div>
                 </div>
                 <div>
                   <span className="text-gray-600">Total:</span>
@@ -591,6 +835,35 @@ ${"=".repeat(50)}
                   <div className="text-xs text-gray-500">Simpat.</div>
                 </div>
               </div>
+
+              {/* Detalle de asistentes por categoría */}
+              {selectedRecord.miembrosAsistieron && (
+                <div className="pt-3 border-t">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    Miembros que Asistieron
+                  </h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {Object.keys(selectedRecord.miembrosAsistieron).map((catKey) => {
+                      const members = selectedRecord.miembrosAsistieron[catKey]
+                      if (members.length === 0) return null
+                      return (
+                        <div key={catKey}>
+                          <h5 className="text-xs font-semibold text-gray-600 mb-1 capitalize">{catKey}:</h5>
+                          {members.map((miembro: any) => (
+                            <div
+                              key={miembro.id}
+                              className="text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-100 mb-1"
+                            >
+                              {miembro.nombre}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Detalle de simpatizantes */}
               {selectedRecord.simpatizantesAsistieron && selectedRecord.simpatizantesAsistieron.length > 0 && (

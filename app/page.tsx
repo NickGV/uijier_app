@@ -7,45 +7,167 @@ import { SimpatizantesScreen } from "@/components/simpatizantes-screen"
 import { SimpatizanteDetailScreen } from "@/components/simpatizante-detail-screen"
 import { MiembrosScreen } from "@/components/miembros-screen"
 import { MiembroDetailScreen } from "@/components/miembro-detail-screen"
+import { LoginScreen } from "@/components/login-screen"
+import { DashboardScreen } from "@/components/dashboard-screen"
+import { UjieresScreen } from "@/components/ujieres-screen"
+import { UjierDetailScreen } from "@/components/ujier-detail-screen"
 import { BottomNavigation } from "@/components/bottom-navigation"
-import { AdminPasswordInput } from "@/components/admin-password-input"
-import { Lock, WifiOff, Cloud, CheckCircle, XCircle } from "lucide-react"
-import { useDataSync } from "@/hooks/use-data-sync" // Import the new hook
+import { WifiOff, Cloud, CheckCircle, XCircle } from "lucide-react"
+import { useDataSync } from "@/hooks/use-data-sync"
 
 export default function UjierApp() {
   const {
     simpatizantes,
     miembros,
     historial,
+    usuarios,
     addSimpatizante,
     updateSimpatizante,
     addMiembro,
     updateMiembro,
     saveConteo,
+    addUsuario,
+    updateUsuario,
+    deleteUsuario,
+    authenticateUser,
     isOnline,
     isSyncing,
     syncError,
     isLoading,
-  } = useDataSync() // Use the data sync hook
+  } = useDataSync()
 
-  const [currentScreen, setCurrentScreen] = useState("conteo")
+  // Authentication state
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Navigation state
+  const [currentScreen, setCurrentScreen] = useState("dashboard")
   const [selectedSimpatizante, setSelectedSimpatizante] = useState<any>(null)
   const [selectedMiembro, setSelectedMiembro] = useState<any>(null)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
-  const [showAdminDialog, setShowAdminDialog] = useState(false)
-  const [requestedScreen, setRequestedScreen] = useState("")
+  const [selectedUsuario, setSelectedUsuario] = useState<any>(null)
+
+  // --- Estado del Conteo (levantado a app/page.tsx) ---
+  const [hermanos, setHermanos] = useState(0)
+  const [hermanas, setHermanas] = useState(0)
+  const [ninos, setNinos] = useState(0)
+  const [adolescentes, setAdolescentes] = useState(0)
+  const [simpatizantesCount, setSimpatizantesCount] = useState(0)
+  const [simpatizantesDelDia, setSimpatizantesDelDia] = useState<any[]>([])
+  const [hermanosDelDia, setHermanosDelDia] = useState<any[]>([])
+  const [hermanasDelDia, setHermanasDelDia] = useState<any[]>([])
+  const [ninosDelDia, setNinosDelDia] = useState<any[]>([])
+  const [adolescentesDelDia, setAdolescentesDelDia] = useState<any[]>([])
+  const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0])
+  const [tipoServicio, setTipoServicio] = useState("dominical")
+  const [ujierSeleccionado, setUjierSeleccionado] = useState("")
+  const [ujierPersonalizado, setUjierPersonalizado] = useState("")
+  const [modoConsecutivo, setModoConsecutivo] = useState(false)
+  const [datosServicioBase, setDatosServicioBase] = useState<any>(null)
+
+  // Resetear el formulario de conteo
+  const resetConteoForm = () => {
+    setHermanos(0)
+    setHermanas(0)
+    setNinos(0)
+    setAdolescentes(0)
+    setSimpatizantesCount(0)
+    setSimpatizantesDelDia([])
+    setHermanosDelDia([])
+    setHermanasDelDia([])
+    setNinosDelDia([])
+    setAdolescentesDelDia([])
+    setFecha(new Date().toISOString().split("T")[0])
+    setTipoServicio("dominical")
+    setUjierSeleccionado("")
+    setUjierPersonalizado("")
+    setModoConsecutivo(false)
+    setDatosServicioBase(null)
+  }
+
+  const handleLogin = (user: any) => {
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+    // Set initial screen based on role
+    setCurrentScreen(user.rol === "admin" ? "dashboard" : "conteo")
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setCurrentScreen("dashboard")
+    // Reset all state
+    resetConteoForm()
+    setSelectedSimpatizante(null)
+    setSelectedMiembro(null)
+    setSelectedUsuario(null)
+  }
 
   const handleScreenChange = (screen: string) => {
-    if ((screen === "historial" || screen === "miembros") && !isAdminAuthenticated) {
-      setRequestedScreen(screen)
-      setShowAdminDialog(true)
-      return
+    // Check permissions
+    if (currentUser?.rol === "ujier" && !["conteo", "simpatizantes"].includes(screen)) {
+      return // Ujier can only access conteo and simpatizantes
     }
     setCurrentScreen(screen)
   }
 
   const renderScreen = () => {
+    if (!isAuthenticated) {
+      return <LoginScreen usuarios={usuarios} onLogin={handleLogin} onAuthenticate={authenticateUser} />
+    }
+
     switch (currentScreen) {
+      case "dashboard":
+        return currentUser?.rol === "admin" ? (
+          <DashboardScreen
+            historial={historial}
+            simpatizantes={simpatizantes}
+            miembros={miembros}
+            usuarios={usuarios}
+            currentUser={currentUser}
+            onNavigate={handleScreenChange}
+          />
+        ) : (
+          <ConteoScreen
+            simpatizantes={simpatizantes}
+            miembros={miembros}
+            onAddSimpatizante={addSimpatizante}
+            onAddMiembro={addMiembro}
+            onSaveConteo={saveConteo}
+            hermanos={hermanos}
+            setHermanos={setHermanos}
+            hermanas={hermanas}
+            setHermanas={setHermanas}
+            ninos={ninos}
+            setNinos={setNinos}
+            adolescentes={adolescentes}
+            setAdolescentes={setAdolescentes}
+            simpatizantesCount={simpatizantesCount}
+            setSimpatizantesCount={setSimpatizantesCount}
+            simpatizantesDelDia={simpatizantesDelDia}
+            setSimpatizantesDelDia={setSimpatizantesDelDia}
+            hermanosDelDia={hermanosDelDia}
+            setHermanosDelDia={setHermanosDelDia}
+            hermanasDelDia={hermanasDelDia}
+            setHermanasDelDia={setHermanasDelDia}
+            ninosDelDia={ninosDelDia}
+            setNinosDelDia={setNinosDelDia}
+            adolescentesDelDia={adolescentesDelDia}
+            setAdolescentesDelDia={setAdolescentesDelDia}
+            fecha={fecha}
+            setFecha={setFecha}
+            tipoServicio={tipoServicio}
+            setTipoServicio={setTipoServicio}
+            ujierSeleccionado={ujierSeleccionado}
+            setUjierSeleccionado={setUjierSeleccionado}
+            ujierPersonalizado={ujierPersonalizado}
+            setUjierPersonalizado={setUjierPersonalizado}
+            modoConsecutivo={modoConsecutivo}
+            setModoConsecutivo={setModoConsecutivo}
+            datosServicioBase={datosServicioBase}
+            setDatosServicioBase={setDatosServicioBase}
+            resetConteoForm={resetConteoForm}
+          />
+        )
       case "conteo":
         return (
           <ConteoScreen
@@ -54,6 +176,39 @@ export default function UjierApp() {
             onAddSimpatizante={addSimpatizante}
             onAddMiembro={addMiembro}
             onSaveConteo={saveConteo}
+            hermanos={hermanos}
+            setHermanos={setHermanos}
+            hermanas={hermanas}
+            setHermanas={setHermanas}
+            ninos={ninos}
+            setNinos={setNinos}
+            adolescentes={adolescentes}
+            setAdolescentes={setAdolescentes}
+            simpatizantesCount={simpatizantesCount}
+            setSimpatizantesCount={setSimpatizantesCount}
+            simpatizantesDelDia={simpatizantesDelDia}
+            setSimpatizantesDelDia={setSimpatizantesDelDia}
+            hermanosDelDia={hermanosDelDia}
+            setHermanosDelDia={setHermanosDelDia}
+            hermanasDelDia={hermanasDelDia}
+            setHermanasDelDia={setHermanasDelDia}
+            ninosDelDia={ninosDelDia}
+            setNinosDelDia={setNinosDelDia}
+            adolescentesDelDia={adolescentesDelDia}
+            setAdolescentesDelDia={setAdolescentesDelDia}
+            fecha={fecha}
+            setFecha={setFecha}
+            tipoServicio={tipoServicio}
+            setTipoServicio={setTipoServicio}
+            ujierSeleccionado={ujierSeleccionado}
+            setUjierSeleccionado={setUjierSeleccionado}
+            ujierPersonalizado={ujierPersonalizado}
+            setUjierPersonalizado={setUjierPersonalizado}
+            modoConsecutivo={modoConsecutivo}
+            setModoConsecutivo={setModoConsecutivo}
+            datosServicioBase={datosServicioBase}
+            setDatosServicioBase={setDatosServicioBase}
+            resetConteoForm={resetConteoForm}
           />
         )
       case "historial":
@@ -62,12 +217,22 @@ export default function UjierApp() {
         return (
           <SimpatizantesScreen
             simpatizantes={simpatizantes}
-            onSelectSimpatizante={setSelectedSimpatizante}
+            onSelectSimpatizante={handleSimpatizanteSelect}
             onAddSimpatizante={addSimpatizante}
           />
         )
       case "miembros":
-        return <MiembrosScreen miembros={miembros} onSelectMiembro={setSelectedMiembro} onAddMiembro={addMiembro} />
+        return <MiembrosScreen miembros={miembros} onSelectMiembro={handleMiembroSelect} onAddMiembro={addMiembro} />
+      case "ujieres":
+        return (
+          <UjieresScreen
+            usuarios={usuarios}
+            onSelectUsuario={handleUsuarioSelect}
+            onAddUsuario={addUsuario}
+            onUpdateUsuario={updateUsuario}
+            currentUser={currentUser}
+          />
+        )
       case "simpatizante-detail":
         return (
           <SimpatizanteDetailScreen
@@ -84,14 +249,64 @@ export default function UjierApp() {
             onUpdateMiembro={updateMiembro}
           />
         )
-      default:
+      case "ujier-detail":
         return (
+          <UjierDetailScreen
+            usuario={selectedUsuario}
+            onBack={() => setCurrentScreen("ujieres")}
+            onUpdateUsuario={updateUsuario}
+          />
+        )
+      default:
+        return currentUser?.rol === "admin" ? (
+          <DashboardScreen
+            historial={historial}
+            simpatizantes={simpatizantes}
+            miembros={miembros}
+            usuarios={usuarios}
+            currentUser={currentUser}
+            onNavigate={handleScreenChange}
+          />
+        ) : (
           <ConteoScreen
             simpatizantes={simpatizantes}
             miembros={miembros}
             onAddSimpatizante={addSimpatizante}
             onAddMiembro={addMiembro}
             onSaveConteo={saveConteo}
+            hermanos={hermanos}
+            setHermanos={setHermanos}
+            hermanas={hermanas}
+            setHermanas={setHermanas}
+            ninos={ninos}
+            setNinos={setNinos}
+            adolescentes={adolescentes}
+            setAdolescentes={setAdolescentes}
+            simpatizantesCount={simpatizantesCount}
+            setSimpatizantesCount={setSimpatizantesCount}
+            simpatizantesDelDia={simpatizantesDelDia}
+            setSimpatizantesDelDia={setSimpatizantesDelDia}
+            hermanosDelDia={hermanosDelDia}
+            setHermanosDelDia={setHermanosDelDia}
+            hermanasDelDia={hermanasDelDia}
+            setHermanasDelDia={setHermanasDelDia}
+            ninosDelDia={ninosDelDia}
+            setNinosDelDia={setNinosDelDia}
+            adolescentesDelDia={adolescentesDelDia}
+            setAdolescentesDelDia={setAdolescentesDelDia}
+            fecha={fecha}
+            setFecha={setFecha}
+            tipoServicio={tipoServicio}
+            setTipoServicio={setTipoServicio}
+            ujierSeleccionado={ujierSeleccionado}
+            setUjierSeleccionado={setUjierSeleccionado}
+            ujierPersonalizado={ujierPersonalizado}
+            setUjierPersonalizado={setUjierPersonalizado}
+            modoConsecutivo={modoConsecutivo}
+            setModoConsecutivo={setModoConsecutivo}
+            datosServicioBase={datosServicioBase}
+            setDatosServicioBase={setDatosServicioBase}
+            resetConteoForm={resetConteoForm}
           />
         )
     }
@@ -107,6 +322,11 @@ export default function UjierApp() {
     setCurrentScreen("miembro-detail")
   }
 
+  const handleUsuarioSelect = (usuario: any) => {
+    setSelectedUsuario(usuario)
+    setCurrentScreen("ujier-detail")
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
@@ -119,88 +339,52 @@ export default function UjierApp() {
     )
   }
 
+  if (!isAuthenticated) {
+    return renderScreen()
+  }
+
   return (
-    <div className="max-w-sm mx-auto bg-gradient-to-b from-slate-50 to-gray-100 min-h-screen">
+    <div className="w-full max-w-sm mx-auto bg-gradient-to-b from-slate-50 to-gray-100 min-h-screen">
       {/* Sync Status Indicator */}
-      <div className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/90 backdrop-blur-sm p-2 text-center text-xs text-gray-600 flex items-center justify-center gap-2 shadow-sm z-50">
+      <div className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm bg-white/90 backdrop-blur-sm p-1 sm:p-2 text-center text-xs text-gray-600 flex items-center justify-center gap-1 sm:gap-2 shadow-sm z-50">
         {isOnline ? (
           isSyncing ? (
             <>
-              <Cloud className="w-4 h-4 animate-pulse text-blue-500" />
-              <span className="text-blue-600">Sincronizando...</span>
+              <Cloud className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse text-blue-500" />
+              <span className="text-blue-600 text-xs">Sincronizando...</span>
             </>
           ) : syncError ? (
             <>
-              <XCircle className="w-4 h-4 text-red-500" />
-              <span className="text-red-600">Error de sincronización</span>
+              <XCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+              <span className="text-red-600 text-xs">Error de sincronización</span>
             </>
           ) : (
             <>
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-green-600">Online y sincronizado</span>
+              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+              <span className="text-green-600 text-xs">Online y sincronizado</span>
             </>
           )
         ) : (
           <>
-            <WifiOff className="w-4 h-4 text-orange-500" />
-            <span className="text-orange-600">Offline (guardando localmente)</span>
+            <WifiOff className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
+            <span className="text-orange-600 text-xs">Offline (guardando localmente)</span>
           </>
         )}
       </div>
 
-      <div className="flex flex-col min-h-screen pt-10">
-        {" "}
-        {/* Add padding-top to account for status bar */}
-        <div className="flex-1 pb-20">
-          {currentScreen === "simpatizantes" ? (
-            <SimpatizantesScreen
-              simpatizantes={simpatizantes}
-              onSelectSimpatizante={handleSimpatizanteSelect}
-              onAddSimpatizante={addSimpatizante}
-            />
-          ) : currentScreen === "miembros" ? (
-            <MiembrosScreen miembros={miembros} onSelectMiembro={handleMiembroSelect} onAddMiembro={addMiembro} />
-          ) : (
-            renderScreen()
-          )}
-        </div>
-        {currentScreen !== "simpatizante-detail" && currentScreen !== "miembro-detail" && (
-          <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm z-50">
+       <div className="flex flex-col min-h-screen pt-8 sm:pt-10">
+        <div className="flex-1 pb-24 sm:pb-32 safe-area-bottom">{renderScreen()}</div>
+        {!["simpatizante-detail", "miembro-detail", "ujier-detail"].includes(currentScreen) && (
+          <div className="fixed bottom-0 left-0 right-0 w-full max-w-sm z-20 safe-area-bottom">
             <BottomNavigation
               currentScreen={currentScreen}
               onScreenChange={handleScreenChange}
-              isAdminAuthenticated={isAdminAuthenticated}
+              currentUser={currentUser}
+              onLogout={handleLogout}
             />
           </div>
         )}
       </div>
-      {/* Admin Dialog */}
-      {showAdminDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <div className="text-center mb-4">
-              <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Acceso de Administrador</h3>
-              <p className="text-sm text-gray-600 mt-2">Ingrese la clave para acceder a esta sección</p>
-            </div>
-
-            <AdminPasswordInput
-              onSuccess={() => {
-                setIsAdminAuthenticated(true)
-                setShowAdminDialog(false)
-                setCurrentScreen(requestedScreen)
-                setRequestedScreen("")
-              }}
-              onCancel={() => {
-                setShowAdminDialog(false)
-                setRequestedScreen("")
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
