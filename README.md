@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ujier App
+
+Ujier App is a web application built with Next.js that provides a platform for managing ujieres, simpatizantes, and miembros. The application is designed to be functional, scalable, and maintainable, following best practices in modern web development.
+
+## Features
+
+- **User Authentication**: Secure login functionality for users.
+- **Dashboard**: A central hub for users to access various features and data.
+- **Data Management**: View and manage lists of ujieres, simpatizantes, and miembros.
+- **Responsive Design**: Optimized for both desktop and mobile devices.
+- **Error Handling**: Robust error boundary to catch and display errors gracefully.
+- **Progressive Web App (PWA)**: Offline capabilities and installation support.
+
+## Project Structure
+
+```
+src/
+├── app/                     # Application pages and API routes
+│   ├── (auth)/              # Authentication-related pages
+│   ├── (dashboard)/         # Dashboard-related pages
+│   ├── api/                 # API routes
+├── components/              # Reusable components
+├── hooks/                   # Custom hooks
+├── lib/                     # Utility functions and libraries
+├── styles/                  # Global styles
+└── types/                   # TypeScript types
+public/
+├── manifest.json            # Web app manifest for PWA
+├── robots.txt               # Instructions for web crawlers
+└── sw.js                    # Service worker for PWA
+```
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repository**:
+   ```
+   git clone <repository-url>
+   cd ujier-app
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Install dependencies**:
+   ```
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Set up environment variables**:
+   Copy `.env.example` to `.env` and fill in the required values.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. **Run the development server**:
+   ```
+   npm run dev
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. **Open your browser**:
+   Navigate to `http://localhost:3000` to view the application.
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License. See the LICENSE file for details.
