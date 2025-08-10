@@ -1,42 +1,45 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { fetchSimpatizantes } from '../../../lib/utils'; // Assuming a utility function to fetch data
+"use client";
+import React, { useEffect, useState } from "react";
+import { fetchSimpatizantes } from "@/lib/utils";
+type Item = { id: string; name: string };
 
 const SimpatizantesPage = () => {
-    const [simpatizantes, setSimpatizantes] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [simpatizantes, setSimpatizantes] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const loadSimpatizantes = async () => {
-            try {
-                const data = await fetchSimpatizantes();
-                setSimpatizantes(data);
-            } catch (err) {
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+  useEffect(() => {
+    const loadSimpatizantes = async () => {
+      try {
+        const data = await fetchSimpatizantes();
+        setSimpatizantes(data);
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Error cargando simpatizantes";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        loadSimpatizantes();
-    }, []);
+    loadSimpatizantes();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error loading simpatizantes: {error.message}</div>;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error loading simpatizantes: {error}</div>;
 
-    return (
-        <div>
-            <h1>Simpatizantes</h1>
-            <ul>
-                {simpatizantes.map((simpatizante) => (
-                    <li key={simpatizante.id}>
-                        {simpatizante.name}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h1>Simpatizantes</h1>
+      <ul>
+        {simpatizantes.map((simpatizante) => (
+          <li key={simpatizante.id}>
+            <span>{simpatizante.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default SimpatizantesPage;

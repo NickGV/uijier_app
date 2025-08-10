@@ -1,39 +1,38 @@
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
-import { adminAuth } from '@/src/lib/firebase-admin'
+import { AppOptions, cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
-const SESSION_COOKIE_NAME = 'session'
-const SESSION_EXPIRES_MS = 1000 * 60 * 60 * 24 * 5 // 5 días
+// Firebase Admin initialization (server-only)
+// Supports either a base64-encoded service account JSON or individual env vars
+const projectId = process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-export async function POST(req: Request) {
-  const { idToken } = await req.json().catch(() => ({}))
-  if (!idToken) return NextResponse.json({ error: 'Missing idToken' }, { status: 400 })
+let adminAppOptions: AppOptions | undefined;
 
-  const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn: SESSION_EXPIRES_MS })
-  const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
-
-  cookies().set(SESSION_COOKIE_NAME, sessionCookie, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_EXPIRES_MS / 1000,
-  })
-
-  return NextResponse.json({ uid: decoded.uid })
-}
-
-export async function DELETE() {
-  const cookieStore = cookies()
-  const session = cookieStore.get(SESSION_COOKIE_NAME)?.value
-  if (session) {
-    try {
-      const decoded = await adminAuth.verifySessionCookie(session, true)
-      await adminAuth.revokeRefreshTokens(decoded.sub)
-    } catch {
-      // ignorar si ya no es válida
-    }
+if (serviceAccountBase64) {
+  try {
+    const decoded = Buffer.from(serviceAccountBase64, "base64").toString(
+      "utf8"
+    );
+    const svc = JSON.parse(decoded);
+    adminAppOptions = { credential: cert(svc) };
+  } catch {
+    // fallback to individual envs below
   }
-  cookieStore.delete(SESSION_COOKIE_NAME)
-  return NextResponse.json({ ok: true })
 }
+
+if (!adminAppOptions && projectId && clientEmail && privateKeyRaw) {
+  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+  adminAppOptions = {
+    credential: cert({ projectId, clientEmail, privateKey }),
+  };
+}
+
+const adminApp = getApps().length
+  ? getApps()[0]
+  : initializeApp(adminAppOptions);
+
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);

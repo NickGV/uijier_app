@@ -1,22 +1,8 @@
-import React from "react";
-import { ThemeProvider } from "../components/providers/theme-provider";
-import "../styles/globals.css";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 
-const RootLayout = ({ children }) => {
-  return (
-    <html lang="es">
-      <head>
-        <title>Ujier App</title>
-        <meta
-          name="description"
-          content="A scalable and maintainable application for managing ujieres."
-        />
-      </head>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
-  );
-};
-
-export default RootLayout;
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  redirect("/conteo");
+}

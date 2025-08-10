@@ -1,15 +1,19 @@
-import React from "react";
-import { ThemeProvider } from "../components/providers/theme-provider";
-import "../styles/globals.css";
+import type { Metadata } from "next";
+import React, { ReactNode } from "react";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import "@/styles/globals.css";
 
-const Layout = ({ children }) => {
-  return (
-    <ThemeProvider>
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-grow">{children}</main>
-      </div>
-    </ThemeProvider>
-  );
+export const metadata: Metadata = {
+  title: "Ujier App",
+  description: "Aplicación para gestión de ujieres y simpatizantes",
 };
 
-export default Layout;
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="es">
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
+    </html>
+  );
+}

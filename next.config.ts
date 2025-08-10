@@ -1,10 +1,10 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const config = {
   reactStrictMode: true,
   experimental: {
-    typedRoutes: true,
+    typedRoutes: false,
   },
-} satisfies NextConfig
+} satisfies NextConfig;
 
-export default config
+export default config;

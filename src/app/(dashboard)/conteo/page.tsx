@@ -1,13 +1,15 @@
-import React from 'react';
+import React from "react";
+import BottomNavigation from "@/components/bottom-navigation";
+import { getCurrentUser } from "@/lib/auth";
 
-const ConteoPage = () => {
-    return (
-        <div>
-            <h1>Conteo</h1>
-            <p>This page allows users to perform counting operations.</p>
-            {/* Additional functionality can be added here */}
-        </div>
-    );
-};
-
-export default ConteoPage;
+export default async function ConteoPage() {
+  const user = await getCurrentUser();
+  // All roles can access conteo
+  return (
+    <div className="pb-24 px-4">
+      <h1 className="text-2xl font-semibold my-4">Conteo</h1>
+      <p className="text-sm text-gray-600">Realiza el conteo.</p>
+      <BottomNavigation />
+    </div>
+  );
+}

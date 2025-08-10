@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+const SESSION_COOKIE_NAME = "session";
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/public")
+  ) {
+    return NextResponse.next();
+  }
+  if (pathname.startsWith("/login")) {
+    return NextResponse.next();
+  }
+
+  const hasSession = req.cookies.get(SESSION_COOKIE_NAME);
+  if (!hasSession) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!_next|.*\\..*|api).*)"],
+};
