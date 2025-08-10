@@ -1,16 +1,26 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 
-const ToastContext = createContext();
+interface Toast {
+  id: string;
+  message: string;
+  type: string;
+}
 
-export const ToastProvider = ({ children }) => {
-    const [toasts, setToasts] = useState([]);
+interface ToastContextType {
+  addToast: (message: string, type?: string) => void;
+}
 
-    const addToast = (message, type = 'info') => {
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+export const ToastProvider = ({ children }: { children: ReactNode }) => {
+    const [toasts, setToasts] = useState<Toast[]>([]);
+
+    const addToast = (message: string, type = 'info') => {
         const id = Math.random().toString(36).substr(2, 9);
         setToasts((prev) => [...prev, { id, message, type }]);
     };
 
-    const removeToast = (id) => {
+    const removeToast = (id: string) => {
         setToasts((prev) => prev.filter((toast) => toast.id !== id));
     };
 
@@ -40,5 +50,9 @@ export const ToastProvider = ({ children }) => {
 };
 
 export const useToast = () => {
-    return useContext(ToastContext);
+    const context = useContext(ToastContext);
+    if (context === undefined) {
+        throw new Error('useToast must be used within a ToastProvider');
+    }
+    return context;
 };
