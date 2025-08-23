@@ -1,12 +1,47 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
 const verifyPassword = (
   password: string,
-  encryptedPassword: string
+  encryptedPassword: string,
+  userName: string
 ): boolean => {
-  const salt = "ujier_salt_2025";
-  return btoa(password + salt) === encryptedPassword;
+  try {
+    // Según el sistema original, las contraseñas se generan como:
+    // 1. Tomar el primer nombre en minúsculas sin tildes
+    // 2. Agregar un punto: "nombre."
+    // 3. Encriptar con btoa(password + "ujier_salt_2025")
+
+    const salt = "ujier_salt_2025";
+
+    // Normalizar el nombre de usuario para generar la contraseña base
+    const primerNombre = userName.split(" ")[0].toLowerCase();
+    const nombreNormalizado = primerNombre
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+      .replace(/[^a-z]/g, ""); // Solo letras minúsculas
+
+    const passwordEsperada = nombreNormalizado + ".";
+
+    // Verificar si la contraseña ingresada coincide con la esperada
+    if (password === passwordEsperada) {
+      // Encriptar la contraseña esperada y compararla con la almacenada
+      const encryptedExpected = Buffer.from(
+        passwordEsperada + salt,
+        "utf8"
+      ).toString("base64");
+      return encryptedExpected === encryptedPassword;
+    }
+
+    // Fallback: intentar con la contraseña ingresada directamente
+    const encryptedInput = Buffer.from(password + salt, "utf8").toString(
+      "base64"
+    );
+    return encryptedInput === encryptedPassword;
+  } catch (error) {
+    console.error("Error verifying password:", error);
+    return false;
+  }
 };
 
 export async function GET() {
@@ -29,7 +64,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { nombre, password } = await req.json();
+    const { nombre, password, createSession = false } = await req.json();
 
     if (!nombre || !password) {
       return NextResponse.json(
@@ -59,8 +94,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Usuario inactivo" }, { status: 401 });
     }
 
-    // Verificar contraseña usando el mismo sistema de la aplicación anterior
-    const isValidPassword = verifyPassword(password, userData.password);
+    // Verificar contraseña
+    const isValidPassword = verifyPassword(
+      password,
+      userData.password,
+      userData.nombre
+    );
     if (!isValidPassword) {
       return NextResponse.json(
         { error: "Contraseña incorrecta" },
@@ -68,15 +107,61 @@ export async function POST(req: Request) {
       );
     }
 
-    // Retornar datos del usuario (sin la contraseña)
+    // Preparar datos del usuario (sin la contraseña)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = userData;
+    const user = {
+      id: userDoc.id,
+      ...userWithoutPassword,
+    };
+
+    // Si se solicita crear sesión, crear cookie y token
+    if (createSession) {
+      try {
+        // Crear custom token
+        const customToken = await adminAuth.createCustomToken(userDoc.id, {
+          rol: userData.rol,
+          nombre: userData.nombre,
+        });
+
+        // Crear cookie de sesión
+        const response = NextResponse.json({
+          success: true,
+          user,
+          customToken,
+        });
+
+        response.cookies.set("session-user", JSON.stringify(user), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 días
+          path: "/",
+        });
+
+        // También crear cookie de sesión para middleware
+        response.cookies.set("session", customToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 días
+          path: "/",
+        });
+
+        return response;
+      } catch (sessionError) {
+        console.error("Error creating session:", sessionError);
+        return NextResponse.json(
+          { error: "Error al crear sesión" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Si no se solicita sesión, solo retornar datos del usuario
     return NextResponse.json({
       success: true,
-      user: {
-        id: userDoc.id,
-        ...userWithoutPassword,
-      },
+      user,
     });
   } catch (error) {
     console.error("Error authenticating user:", error);

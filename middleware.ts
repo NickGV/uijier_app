@@ -5,13 +5,18 @@ const SESSION_COOKIE_NAME = "session";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Skip middleware for static files, API routes, and Next.js internals
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/public")
+    pathname.startsWith("/public") ||
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
+
+  // Allow login page
   if (pathname.startsWith("/login")) {
     return NextResponse.next();
   }
@@ -23,6 +28,7 @@ export function middleware(req: NextRequest) {
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
+
   return NextResponse.next();
 }
 

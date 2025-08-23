@@ -1,34 +1,82 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { Buffer } from "buffer";
 
 const SESSION_COOKIE_NAME = "session";
 const SESSION_EXPIRES_MS = 1000 * 60 * 60 * 24 * 5; // 5 días
 
 export async function POST(req: Request) {
   try {
-    const { idToken } = await req.json().catch(() => ({}));
-    if (!idToken)
-      return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
+    const { nombre, password } = await req.json();
 
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+    if (!nombre || !password) {
+      return NextResponse.json(
+        { error: "Nombre and password are required" },
+        { status: 400 }
+      );
+    }
+
+    const usersRef = adminDb.collection("usuarios");
+    const snapshot = await usersRef
+      .where("nombre", "==", nombre)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return NextResponse.json(
+        { error: "Usuario o contraseña incorrectos" },
+        { status: 401 }
+      );
+    }
+
+    const userDoc = snapshot.docs[0];
+    const userData = userDoc.data();
+
+    // Decode the password from Base64 and compare
+    const storedPassword = Buffer.from(userData.password, "base64").toString(
+      "utf-8"
+    );
+
+    if (storedPassword !== password) {
+      return NextResponse.json(
+        { error: "Usuario o contraseña incorrectos" },
+        { status: 401 }
+      );
+    }
+
+    if (!userData.activo && userData.rol !== "admin") {
+      return NextResponse.json(
+        { error: "El usuario no está activo. Contacte al administrador." },
+        { status: 403 }
+      );
+    }
+
+    // Create a custom token for the user with the rol claim
+    const customToken = await adminAuth.createCustomToken(userDoc.id, {
+      rol: userData.rol,
+      email: userData.email || `${userData.nombre}@ujier.local`,
+    });
+
+    // Create the session cookie directly from the custom token
+    const sessionCookie = await adminAuth.createSessionCookie(customToken, {
       expiresIn: SESSION_EXPIRES_MS,
     });
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
-    const res = NextResponse.json({ uid: decoded.uid });
+    const res = NextResponse.json({ uid: userDoc.id, rol: userData.rol });
     res.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: sessionCookie,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: SESSION_EXPIRES_MS / 1000,
     });
     return res;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Auth error";
-    return NextResponse.json({ error: msg }, { status: 401 });
+    console.error("Auth error:", e);
+    const msg = e instanceof Error ? e.message : "Internal Server Error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

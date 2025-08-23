@@ -3,6 +3,7 @@ import { adminAuth } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
+  debugger;
   try {
     const { user } = await req.json();
 
