@@ -13,6 +13,13 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+// Función para hashear contraseñas (mismo algoritmo que en la API de login)
+export function hashPassword(password: string): string {
+  const salt = "ujier_salt_2025";
+  // Usar btoa para compatibilidad con el navegador
+  return btoa(password + salt);
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -93,6 +100,62 @@ export async function addMiembro(miembro: {
   }
 }
 
+export async function updateMiembro(
+  id: string,
+  data: Partial<{
+    nombre: string;
+    telefono?: string;
+    categoria: "hermano" | "hermana" | "nino" | "adolescente";
+    notas?: string;
+  }>
+) {
+  try {
+    const miembroRef = doc(db, "miembros", id);
+    await updateDoc(miembroRef, data);
+    console.log("Miembro actualizado exitosamente:", id);
+  } catch (error) {
+    console.error("Error updating miembro:", error);
+    throw error;
+  }
+}
+
+export async function deleteMiembro(id: string) {
+  try {
+    const miembroRef = doc(db, "miembros", id);
+    await deleteDoc(miembroRef);
+    console.log("Miembro eliminado exitosamente:", id);
+  } catch (error) {
+    console.error("Error deleting miembro:", error);
+    throw error;
+  }
+}
+
+export async function getMiembroById(id: string) {
+  try {
+    const miembroRef = doc(db, "miembros", id);
+    const miembroSnap = await getDoc(miembroRef);
+
+    if (miembroSnap.exists()) {
+      return {
+        id: miembroSnap.id,
+        ...miembroSnap.data(),
+      } as {
+        id: string;
+        nombre: string;
+        telefono?: string;
+        categoria: "hermano" | "hermana" | "nino" | "adolescente";
+        notas?: string;
+        fechaRegistro: string;
+      };
+    } else {
+      throw new Error("Miembro no encontrado");
+    }
+  } catch (error) {
+    console.error("Error fetching miembro by id:", error);
+    throw error;
+  }
+}
+
 export async function fetchUjieres() {
   try {
     const q = query(collection(db, "usuarios"), orderBy("nombre", "asc"));
@@ -123,7 +186,16 @@ export async function addUjier(ujier: {
   fechaCreacion: string;
 }) {
   try {
-    const docRef = await addDoc(collection(db, "usuarios"), ujier);
+    // Hashear la contraseña antes de guardarla
+    const ujierWithHashedPassword = {
+      ...ujier,
+      password: hashPassword(ujier.password),
+    };
+
+    const docRef = await addDoc(
+      collection(db, "usuarios"),
+      ujierWithHashedPassword
+    );
     console.log("Usuario creado exitosamente:", ujier.nombre);
     return { id: docRef.id };
   } catch (error) {
@@ -142,12 +214,55 @@ export async function updateUjier(
   }>
 ) {
   try {
+    // Si se está actualizando la contraseña, hashearla
+    const updateData = { ...data };
+    if (updateData.password) {
+      updateData.password = hashPassword(updateData.password);
+    }
+
     const ujierRef = doc(db, "usuarios", id);
-    await updateDoc(ujierRef, data);
+    await updateDoc(ujierRef, updateData);
 
     console.log("Usuario actualizado exitosamente:", id);
   } catch (error) {
     console.error("Error updating ujier:", error);
+    throw error;
+  }
+}
+
+export async function deleteUjier(id: string) {
+  try {
+    const ujierRef = doc(db, "usuarios", id);
+    await deleteDoc(ujierRef);
+    console.log("Usuario eliminado exitosamente:", id);
+  } catch (error) {
+    console.error("Error deleting ujier:", error);
+    throw error;
+  }
+}
+
+export async function getUjierById(id: string) {
+  try {
+    const ujierRef = doc(db, "usuarios", id);
+    const ujierSnap = await getDoc(ujierRef);
+
+    if (ujierSnap.exists()) {
+      return {
+        id: ujierSnap.id,
+        ...ujierSnap.data(),
+      } as {
+        id: string;
+        nombre: string;
+        password: string;
+        rol: "admin" | "directiva" | "ujier";
+        activo: boolean;
+        fechaCreacion: string;
+      };
+    } else {
+      throw new Error("Usuario no encontrado");
+    }
+  } catch (error) {
+    console.error("Error fetching ujier by id:", error);
     throw error;
   }
 }
@@ -204,32 +319,6 @@ export async function deleteSimpatizante(id: string) {
     console.log("Simpatizante eliminado exitosamente:", id);
   } catch (error) {
     console.error("Error deleting simpatizante:", error);
-    throw error;
-  }
-}
-
-export async function getUjierById(id: string) {
-  try {
-    const ujierRef = doc(db, "usuarios", id);
-    const ujierSnap = await getDoc(ujierRef);
-
-    if (ujierSnap.exists()) {
-      return {
-        id: ujierSnap.id,
-        ...ujierSnap.data(),
-      } as {
-        id: string;
-        nombre: string;
-        password: string;
-        rol: "admin" | "directiva" | "ujier";
-        activo: boolean;
-        fechaCreacion: string;
-      };
-    } else {
-      throw new Error("Usuario no encontrado");
-    }
-  } catch (error) {
-    console.error("Error fetching ujier by id:", error);
     throw error;
   }
 }
@@ -291,6 +380,85 @@ export async function saveConteo(conteoData: {
     return { id: docRef.id };
   } catch (error) {
     console.error("Error saving conteo:", error);
+    throw error;
+  }
+}
+
+export async function updateHistorialRecord(
+  id: string,
+  data: Partial<{
+    fecha: string;
+    servicio: string;
+    ujier: string[];
+    hermanos: number;
+    hermanas: number;
+    ninos: number;
+    adolescentes: number;
+    simpatizantes: number;
+    total: number;
+    simpatizantesAsistieron?: Array<{ id: string; nombre: string }>;
+    miembrosAsistieron?: {
+      hermanos?: Array<{ id: string; nombre: string }>;
+      hermanas?: Array<{ id: string; nombre: string }>;
+      ninos?: Array<{ id: string; nombre: string }>;
+      adolescentes?: Array<{ id: string; nombre: string }>;
+    };
+  }>
+) {
+  try {
+    const historialRef = doc(db, "historial", id);
+    await updateDoc(historialRef, data);
+    console.log("Registro de historial actualizado exitosamente:", id);
+  } catch (error) {
+    console.error("Error updating historial record:", error);
+    throw error;
+  }
+}
+
+export async function deleteHistorialRecord(id: string) {
+  try {
+    const historialRef = doc(db, "historial", id);
+    await deleteDoc(historialRef);
+    console.log("Registro de historial eliminado exitosamente:", id);
+  } catch (error) {
+    console.error("Error deleting historial record:", error);
+    throw error;
+  }
+}
+
+export async function getHistorialRecordById(id: string) {
+  try {
+    const historialRef = doc(db, "historial", id);
+    const historialSnap = await getDoc(historialRef);
+
+    if (historialSnap.exists()) {
+      return {
+        id: historialSnap.id,
+        ...historialSnap.data(),
+      } as {
+        id: string;
+        fecha: string;
+        servicio: string;
+        ujier: string | string[];
+        hermanos: number;
+        hermanas: number;
+        ninos: number;
+        adolescentes: number;
+        simpatizantes: number;
+        total: number;
+        simpatizantesAsistieron?: Array<{ id: string; nombre: string }>;
+        miembrosAsistieron?: {
+          hermanos?: Array<{ id: string; nombre: string }>;
+          hermanas?: Array<{ id: string; nombre: string }>;
+          ninos?: Array<{ id: string; nombre: string }>;
+          adolescentes?: Array<{ id: string; nombre: string }>;
+        };
+      };
+    } else {
+      throw new Error("Registro de historial no encontrado");
+    }
+  } catch (error) {
+    console.error("Error fetching historial record by id:", error);
     throw error;
   }
 }

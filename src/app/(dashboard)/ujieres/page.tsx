@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/contexts/user-context";
-import { fetchUjieres, addUjier, updateUjier } from "@/lib/utils";
+import { fetchUjieres, addUjier, updateUjier, deleteUjier } from "@/lib/utils";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,11 @@ import {
   Shield,
   Crown,
   UserCog,
+  Edit3,
+  Trash2,
+  Save,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -64,6 +69,14 @@ function UjieresContent() {
     password: "",
     rol: "ujier" as const,
   });
+
+  // Estados para edición y eliminación
+  const [editingUsuario, setEditingUsuario] = useState<Ujier | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isAdmin = user?.rol === "admin";
   const isDirectiva = user?.rol === "directiva";
@@ -135,6 +148,59 @@ function UjieresContent() {
       console.error("Error updating usuario:", err);
       setError("Error al actualizar usuario");
     }
+  };
+
+  // Función para eliminar usuario (solo admin)
+  const handleDeleteUsuario = async (usuarioId: string) => {
+    if (!usuarioId || !isAdmin) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteUjier(usuarioId);
+      // Recargar los datos
+      const updatedData = await fetchUjieres();
+      setUjieres(updatedData);
+      setShowDeleteConfirm(null);
+      alert("Usuario eliminado exitosamente");
+    } catch (error) {
+      console.error("Error al eliminar usuario:", error);
+      alert("Error al eliminar el usuario. Intente nuevamente.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Función para iniciar edición
+  const handleEditUsuario = (usuario: Ujier) => {
+    setEditingUsuario({ ...usuario });
+  };
+
+  // Función para guardar cambios
+  const handleSaveUsuario = async () => {
+    if (!editingUsuario) return;
+
+    setIsSaving(true);
+    try {
+      const { id, ...updateData } = editingUsuario;
+      // Excluir fechaCreacion del update ya que no debe cambiar
+      await updateUjier(id, updateData);
+
+      // Recargar los datos
+      const updatedData = await fetchUjieres();
+      setUjieres(updatedData);
+      setEditingUsuario(null);
+      alert("Usuario actualizado exitosamente");
+    } catch (error) {
+      console.error("Error al actualizar usuario:", error);
+      alert("Error al actualizar el usuario. Intente nuevamente.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Función para cancelar edición
+  const handleCancelEdit = () => {
+    setEditingUsuario(null);
   };
 
   const getRoleDisplayName = (rol: string) => {
@@ -460,8 +526,9 @@ function UjieresContent() {
                   </div>
                 </div>
                 {/* Action buttons */}
-                {(isAdmin || isDirectiva) && (
-                  <div className="ml-4">
+                <div className="ml-4 flex gap-2">
+                  {/* Botón de activar/desactivar para admin y directiva */}
+                  {(isAdmin || isDirectiva) && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -492,8 +559,30 @@ function UjieresContent() {
                         </>
                       )}
                     </Button>
-                  </div>
-                )}
+                  )}
+
+                  {/* Botones de editar y eliminar solo para admin */}
+                  {isAdmin && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50"
+                        onClick={() => handleEditUsuario(usuario)}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent border-red-200 text-red-700 hover:bg-red-50"
+                        onClick={() => setShowDeleteConfirm(usuario.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -537,6 +626,202 @@ function UjieresContent() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                Confirmar Eliminación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700">
+                ¿Estás seguro de que deseas eliminar este usuario? Esta acción
+                no se puede deshacer.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  onClick={() => handleDeleteUsuario(showDeleteConfirm)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de edición */}
+      {editingUsuario && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <Card className="w-full max-w-md bg-white max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Edit3 className="w-5 h-5" />
+                Editar Usuario
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Nombre Completo *
+                </label>
+                <Input
+                  placeholder="Nombre del usuario"
+                  value={editingUsuario.nombre}
+                  onChange={(e) =>
+                    setEditingUsuario({
+                      ...editingUsuario,
+                      nombre: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Contraseña *
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Nueva contraseña"
+                  value={editingUsuario.password}
+                  onChange={(e) =>
+                    setEditingUsuario({
+                      ...editingUsuario,
+                      password: e.target.value,
+                    })
+                  }
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Deja en blanco para mantener la contraseña actual
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Rol del Usuario *
+                </label>
+                <Select
+                  value={editingUsuario.rol}
+                  onValueChange={(value: "admin" | "directiva" | "ujier") =>
+                    setEditingUsuario({ ...editingUsuario, rol: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ujier">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-green-600" />
+                        <div>
+                          <div className="font-medium">Ujier</div>
+                          <div className="text-xs text-gray-500">
+                            Acceso básico: conteo y simpatizantes
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="directiva">
+                      <div className="flex items-center gap-2">
+                        <UserCog className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <div className="font-medium">Directiva</div>
+                          <div className="text-xs text-gray-500">
+                            Acceso a reportes y gestión limitada
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="admin">
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-red-600" />
+                        <div>
+                          <div className="font-medium">Administrador</div>
+                          <div className="text-xs text-gray-500">
+                            Acceso completo al sistema
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Estado
+                </label>
+                <Select
+                  value={editingUsuario.activo ? "activo" : "inactivo"}
+                  onValueChange={(value) =>
+                    setEditingUsuario({
+                      ...editingUsuario,
+                      activo: value === "activo",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-green-600" />
+                        Activo
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="inactivo">
+                      <div className="flex items-center gap-2">
+                        <EyeOff className="w-4 h-4 text-red-600" />
+                        Inactivo
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  onClick={handleSaveUsuario}
+                  disabled={
+                    isSaving ||
+                    !editingUsuario.nombre.trim() ||
+                    !editingUsuario.password.trim()
+                  }
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

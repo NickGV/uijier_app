@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/contexts/user-context";
-import { fetchHistorial } from "@/lib/utils";
+import {
+  fetchHistorial,
+  deleteHistorialRecord,
+  updateHistorialRecord,
+} from "@/lib/utils";
 import { RoleGuard } from "@/components/role-guard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import {
   Calendar,
   Filter,
-  TrendingUp,
   Eye,
   Users,
   Download,
@@ -19,6 +22,11 @@ import {
   BarChart3,
   CalendarDays,
   Search,
+  Edit3,
+  Trash2,
+  Save,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -50,7 +58,7 @@ interface HistorialRecord {
 
 export default function HistorialPage() {
   return (
-    <RoleGuard route="historial">
+    <RoleGuard route="historial" allowedRoles={["admin", "directiva"]}>
       <HistorialContent />
     </RoleGuard>
   );
@@ -71,7 +79,34 @@ function HistorialContent() {
   );
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Verificar permisos
+  // Estados para edición y eliminación
+  const [editingRecord, setEditingRecord] = useState<HistorialRecord | null>(
+    null
+  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const loadHistorial = async () => {
+      try {
+        const data = await fetchHistorial();
+        setHistorial(data);
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Error cargando historial";
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHistorial();
+  }, []);
+
+  // Verificar permisos después de cargar los datos
   if (user && user.rol !== "directiva" && user.rol !== "admin") {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -95,23 +130,6 @@ function HistorialContent() {
       </div>
     );
   }
-
-  useEffect(() => {
-    const loadHistorial = async () => {
-      try {
-        const data = await fetchHistorial();
-        setHistorial(data);
-      } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Error cargando historial";
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadHistorial();
-  }, []);
 
   const filteredData = historial.filter((record) => {
     const servicioMatch =
@@ -224,6 +242,11 @@ function HistorialContent() {
       "Adolescentes",
       "Simpatizantes",
       "Total",
+      "Simpatizantes Asistieron",
+      "Hermanos Asistieron",
+      "Hermanas Asistieron",
+      "Niños Asistieron",
+      "Adolescentes Asistieron",
     ];
 
     const csvContent = [
@@ -241,6 +264,29 @@ function HistorialContent() {
           record.adolescentes,
           record.simpatizantes,
           record.total,
+          `"${
+            record.simpatizantesAsistieron?.map((s) => s.nombre).join("; ") ||
+            ""
+          }"`,
+          `"${
+            record.miembrosAsistieron?.hermanos
+              ?.map((m) => m.nombre)
+              .join("; ") || ""
+          }"`,
+          `"${
+            record.miembrosAsistieron?.hermanas
+              ?.map((m) => m.nombre)
+              .join("; ") || ""
+          }"`,
+          `"${
+            record.miembrosAsistieron?.ninos?.map((m) => m.nombre).join("; ") ||
+            ""
+          }"`,
+          `"${
+            record.miembrosAsistieron?.adolescentes
+              ?.map((m) => m.nombre)
+              .join("; ") || ""
+          }"`,
         ].join(",")
       ),
     ].join("\n");
@@ -257,6 +303,345 @@ function HistorialContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadExcel = async () => {
+    try {
+      // Importar xlsx dinámicamente
+      const XLSX = await import("xlsx");
+
+      // Preparar datos para Excel
+      const excelData = filteredData.map((record) => ({
+        Fecha: new Date(record.fecha).toLocaleDateString("es-ES"),
+        "Día de la Semana": new Date(record.fecha).toLocaleDateString("es-ES", {
+          weekday: "long",
+        }),
+        Servicio: record.servicio,
+        "Ujier(es)": Array.isArray(record.ujier)
+          ? record.ujier.join(", ")
+          : record.ujier,
+        Hermanos: record.hermanos,
+        Hermanas: record.hermanas,
+        Niños: record.ninos,
+        Adolescentes: record.adolescentes,
+        Simpatizantes: record.simpatizantes,
+        "Total Asistentes": record.total,
+        "Simpatizantes que Asistieron":
+          record.simpatizantesAsistieron?.map((s) => s.nombre).join(", ") || "",
+        "Hermanos que Asistieron":
+          record.miembrosAsistieron?.hermanos
+            ?.map((m) => m.nombre)
+            .join(", ") || "",
+        "Hermanas que Asistieron":
+          record.miembrosAsistieron?.hermanas
+            ?.map((m) => m.nombre)
+            .join(", ") || "",
+        "Niños que Asistieron":
+          record.miembrosAsistieron?.ninos?.map((m) => m.nombre).join(", ") ||
+          "",
+        "Adolescentes que Asistieron":
+          record.miembrosAsistieron?.adolescentes
+            ?.map((m) => m.nombre)
+            .join(", ") || "",
+      }));
+
+      // Estadísticas resumidas para segunda hoja
+      const estadisticas = [
+        { Concepto: "Total de Registros", Valor: totalRegistros },
+        { Concepto: "Promedio de Asistencia", Valor: promedioAsistencia },
+        { Concepto: "Mayor Asistencia", Valor: mayorAsistencia },
+        { Concepto: "Menor Asistencia", Valor: menorAsistencia },
+        { Concepto: "", Valor: "" }, // Separador
+        { Concepto: "TOTALES POR CATEGORÍA", Valor: "" },
+        { Concepto: "Total Hermanos", Valor: totalHermanos },
+        { Concepto: "Total Hermanas", Valor: totalHermanas },
+        { Concepto: "Total Niños", Valor: totalNinos },
+        { Concepto: "Total Adolescentes", Valor: totalAdolescentes },
+        { Concepto: "Total Simpatizantes", Valor: totalSimpatizantes },
+        { Concepto: "GRAN TOTAL", Valor: granTotal },
+      ];
+
+      // Crear libro de trabajo con múltiples hojas
+      const workbook = XLSX.utils.book_new();
+
+      // Hoja 1: Datos detallados
+      const worksheet1 = XLSX.utils.json_to_sheet(excelData);
+
+      // Ajustar ancho de columnas
+      const colWidths = [
+        { wch: 12 }, // Fecha
+        { wch: 15 }, // Día de la Semana
+        { wch: 20 }, // Servicio
+        { wch: 25 }, // Ujier(es)
+        { wch: 10 }, // Hermanos
+        { wch: 10 }, // Hermanas
+        { wch: 10 }, // Niños
+        { wch: 12 }, // Adolescentes
+        { wch: 12 }, // Simpatizantes
+        { wch: 12 }, // Total Asistentes
+        { wch: 40 }, // Simpatizantes que Asistieron
+        { wch: 40 }, // Hermanos que Asistieron
+        { wch: 40 }, // Hermanas que Asistieron
+        { wch: 40 }, // Niños que Asistieron
+        { wch: 40 }, // Adolescentes que Asistieron
+      ];
+      worksheet1["!cols"] = colWidths;
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet1,
+        "Registros Detallados"
+      );
+
+      // Hoja 2: Estadísticas
+      const worksheet2 = XLSX.utils.json_to_sheet(estadisticas);
+      worksheet2["!cols"] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(workbook, worksheet2, "Estadísticas");
+
+      // Generar archivo Excel
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      // Descargar archivo
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `informe_asistencia_completo_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error al exportar a Excel:", error);
+      alert(
+        "Error al generar el archivo Excel. Por favor, intente nuevamente."
+      );
+    }
+  };
+
+  const downloadDetailedReport = () => {
+    const reportContent = `
+INFORME DETALLADO DE ASISTENCIA
+===============================
+
+FILTROS APLICADOS:
+- Servicio: ${filtroServicio === "todos" ? "Todos" : filtroServicio}
+- Ujier: ${filtroUjier === "todos" ? "Todos" : filtroUjier}
+- Fecha inicio: ${fechaInicio || "Sin filtro"}
+- Fecha fin: ${fechaFin || "Sin filtro"}
+- Búsqueda: ${searchTerm || "Sin filtro"}
+- Fecha de generación: ${new Date().toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
+
+RESUMEN EJECUTIVO:
+==================
+- Total de registros analizados: ${totalRegistros}
+- Período analizado: ${
+      fechaInicio && fechaFin
+        ? `${fechaInicio} a ${fechaFin}`
+        : "Todos los registros"
+    }
+- Gran total de asistentes: ${granTotal} personas
+- Promedio de asistencia por servicio: ${promedioAsistencia} personas
+- Mayor asistencia registrada: ${mayorAsistencia} personas
+- Menor asistencia registrada: ${menorAsistencia} personas
+
+ESTADÍSTICAS POR CATEGORÍA:
+===========================
+- Hermanos: ${totalHermanos} (${((totalHermanos / granTotal) * 100).toFixed(
+      1
+    )}%)
+- Hermanas: ${totalHermanas} (${((totalHermanas / granTotal) * 100).toFixed(
+      1
+    )}%)
+- Niños: ${totalNinos} (${((totalNinos / granTotal) * 100).toFixed(1)}%)
+- Adolescentes: ${totalAdolescentes} (${(
+      (totalAdolescentes / granTotal) *
+      100
+    ).toFixed(1)}%)
+- Simpatizantes: ${totalSimpatizantes} (${(
+      (totalSimpatizantes / granTotal) *
+      100
+    ).toFixed(1)}%)
+
+DETALLE DE REGISTROS:
+=====================
+${filteredData
+  .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+  .map(
+    (record, index) => `
+${index + 1}. REGISTRO DEL ${new Date(record.fecha)
+      .toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      .toUpperCase()}
+   Servicio: ${record.servicio}
+   Ujier(es): ${
+     Array.isArray(record.ujier) ? record.ujier.join(", ") : record.ujier
+   }
+   
+   CONTEO POR CATEGORÍAS:
+   - Hermanos: ${record.hermanos}
+   - Hermanas: ${record.hermanas}
+   - Niños: ${record.ninos}
+   - Adolescentes: ${record.adolescentes}
+   - Simpatizantes: ${record.simpatizantes}
+   - TOTAL: ${record.total}
+   
+   ASISTENTES CON NOMBRE:
+   ${
+     record.simpatizantesAsistieron && record.simpatizantesAsistieron.length > 0
+       ? `Simpatizantes (${
+           record.simpatizantesAsistieron.length
+         }): ${record.simpatizantesAsistieron.map((s) => s.nombre).join(", ")}`
+       : "Simpatizantes: Ninguno registrado"
+   }
+       ${
+         record.miembrosAsistieron?.hermanos &&
+         record.miembrosAsistieron.hermanos.length > 0
+           ? `Hermanos (${
+               record.miembrosAsistieron.hermanos.length
+             }): ${record.miembrosAsistieron.hermanos
+               .map((m) => m.nombre)
+               .join(", ")}`
+           : "Hermanos: Ninguno registrado"
+       }
+    ${
+      record.miembrosAsistieron?.hermanas &&
+      record.miembrosAsistieron.hermanas.length > 0
+        ? `Hermanas (${
+            record.miembrosAsistieron.hermanas.length
+          }): ${record.miembrosAsistieron.hermanas
+            .map((m) => m.nombre)
+            .join(", ")}`
+        : "Hermanas: Ninguno registrado"
+    }
+    ${
+      record.miembrosAsistieron?.ninos &&
+      record.miembrosAsistieron.ninos.length > 0
+        ? `Niños (${
+            record.miembrosAsistieron.ninos.length
+          }): ${record.miembrosAsistieron.ninos
+            .map((m) => m.nombre)
+            .join(", ")}`
+        : "Niños: Ninguno registrado"
+    }
+    ${
+      record.miembrosAsistieron?.adolescentes &&
+      record.miembrosAsistieron.adolescentes.length > 0
+        ? `Adolescentes (${
+            record.miembrosAsistieron.adolescentes.length
+          }): ${record.miembrosAsistieron.adolescentes
+            .map((m) => m.nombre)
+            .join(", ")}`
+        : "Adolescentes: Ninguno registrado"
+    }
+
+${"=".repeat(80)}
+`
+  )
+  .join("")}
+
+NOTAS FINALES:
+==============
+- Este informe fue generado automáticamente por el Sistema de Conteo de Asistencia
+- Los datos reflejan únicamente los registros que cumplen con los filtros aplicados
+- Para consultas adicionales, contacte al administrador del sistema
+    `.trim();
+
+    const blob = new Blob([reportContent], {
+      type: "text/plain;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `informe_detallado_${new Date().toISOString().split("T")[0]}.txt`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Función para eliminar registro
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!recordId) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteHistorialRecord(recordId);
+      // Recargar los datos
+      const updatedData = await fetchHistorial();
+      setHistorial(updatedData);
+      setShowDeleteConfirm(null);
+      alert("Registro eliminado exitosamente");
+    } catch (error) {
+      console.error("Error al eliminar registro:", error);
+      alert("Error al eliminar el registro. Intente nuevamente.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Función para iniciar edición
+  const handleEditRecord = (record: HistorialRecord) => {
+    setEditingRecord({ ...record });
+  };
+
+  // Función para guardar cambios
+  const handleSaveRecord = async () => {
+    if (!editingRecord) return;
+
+    setIsSaving(true);
+    try {
+      const { id, ...updateData } = editingRecord;
+      // Asegurar que ujier sea un array
+      const dataToUpdate = {
+        ...updateData,
+        ujier: Array.isArray(updateData.ujier)
+          ? updateData.ujier
+          : [updateData.ujier],
+      };
+      await updateHistorialRecord(id, dataToUpdate);
+
+      // Recargar los datos
+      const updatedData = await fetchHistorial();
+      setHistorial(updatedData);
+      setEditingRecord(null);
+      alert("Registro actualizado exitosamente");
+    } catch (error) {
+      console.error("Error al actualizar registro:", error);
+      alert("Error al actualizar el registro. Intente nuevamente.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Función para cancelar edición
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
   };
 
   if (loading) {
@@ -567,7 +952,7 @@ function HistorialContent() {
                 Descargar Informes
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -575,7 +960,25 @@ function HistorialContent() {
                 className="bg-transparent border-green-200 text-green-700 hover:bg-green-50 text-xs"
               >
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                Descargar CSV
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadExcel}
+                className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50 text-xs"
+              >
+                <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadDetailedReport}
+                className="bg-transparent border-purple-200 text-purple-700 hover:bg-purple-50 text-xs"
+              >
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                Detallado
               </Button>
             </div>
           </CardContent>
@@ -686,7 +1089,7 @@ function HistorialContent() {
                         {record.simpatizantesAsistieron.length}):
                       </div>
                       <div className="text-xs text-emerald-800">
-                        {record.simpatizantesAsistieron.map((s, index) => (
+                        {record.simpatizantesAsistieron.map((s) => (
                           <span
                             key={s.id}
                             className="inline-block bg-emerald-100 px-2 py-1 rounded mr-1 mb-1"
@@ -698,15 +1101,33 @@ function HistorialContent() {
                     </div>
                   )}
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full bg-transparent hover:bg-slate-50"
-                  onClick={() => setSelectedRecord(record)}
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Ver Detalles Completos
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-transparent hover:bg-slate-50"
+                    onClick={() => setSelectedRecord(record)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Ver Detalles
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-blue-200 text-blue-700 hover:bg-blue-50"
+                    onClick={() => handleEditRecord(record)}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-transparent border-red-200 text-red-700 hover:bg-red-50"
+                    onClick={() => setShowDeleteConfirm(record.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))
@@ -814,6 +1235,251 @@ function HistorialContent() {
               >
                 Cerrar
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md bg-white">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                Confirmar Eliminación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700">
+                ¿Estás seguro de que deseas eliminar este registro del
+                historial? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  onClick={() => handleDeleteRecord(showDeleteConfirm)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de edición */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <Card className="w-full max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Edit3 className="w-5 h-5" />
+                Editar Registro
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Fecha
+                  </label>
+                  <Input
+                    type="date"
+                    value={editingRecord.fecha}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        fecha: e.target.value,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Servicio
+                  </label>
+                  <Select
+                    value={editingRecord.servicio}
+                    onValueChange={(value) =>
+                      setEditingRecord({ ...editingRecord, servicio: value })
+                    }
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dominical">Dominical</SelectItem>
+                      <SelectItem value="oración y enseñanza">
+                        Oración y Enseñanza
+                      </SelectItem>
+                      <SelectItem value="hermanas dorcas">
+                        Hermanas Dorcas
+                      </SelectItem>
+                      <SelectItem value="evangelismo">Evangelismo</SelectItem>
+                      <SelectItem value="misionero">Misionero</SelectItem>
+                      <SelectItem value="jóvenes">Jóvenes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Hermanos
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editingRecord.hermanos}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        hermanos: parseInt(e.target.value) || 0,
+                        total:
+                          (parseInt(e.target.value) || 0) +
+                          editingRecord.hermanas +
+                          editingRecord.ninos +
+                          editingRecord.adolescentes +
+                          editingRecord.simpatizantes,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Hermanas
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editingRecord.hermanas}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        hermanas: parseInt(e.target.value) || 0,
+                        total:
+                          editingRecord.hermanos +
+                          (parseInt(e.target.value) || 0) +
+                          editingRecord.ninos +
+                          editingRecord.adolescentes +
+                          editingRecord.simpatizantes,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Niños
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editingRecord.ninos}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        ninos: parseInt(e.target.value) || 0,
+                        total:
+                          editingRecord.hermanos +
+                          editingRecord.hermanas +
+                          (parseInt(e.target.value) || 0) +
+                          editingRecord.adolescentes +
+                          editingRecord.simpatizantes,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Adolescentes
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editingRecord.adolescentes}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        adolescentes: parseInt(e.target.value) || 0,
+                        total:
+                          editingRecord.hermanos +
+                          editingRecord.hermanas +
+                          editingRecord.ninos +
+                          (parseInt(e.target.value) || 0) +
+                          editingRecord.simpatizantes,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Simpatizantes
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editingRecord.simpatizantes}
+                    onChange={(e) =>
+                      setEditingRecord({
+                        ...editingRecord,
+                        simpatizantes: parseInt(e.target.value) || 0,
+                        total:
+                          editingRecord.hermanos +
+                          editingRecord.hermanas +
+                          editingRecord.ninos +
+                          editingRecord.adolescentes +
+                          (parseInt(e.target.value) || 0),
+                      })
+                    }
+                    className="h-9"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <div className="text-sm text-gray-600 mb-1">
+                  Total Calculado:
+                </div>
+                <div className="text-2xl font-bold text-slate-700">
+                  {editingRecord.total}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  onClick={handleSaveRecord}
+                  disabled={isSaving}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

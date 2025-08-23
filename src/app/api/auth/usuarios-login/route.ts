@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
+// TODO: Verificar si se puede usar el hashPassword de utils.ts, arreglar el update de password del ujier para que use esta encriptacion
+// const encryptPassword = (password: string): string => {
+//   // Usando btoa para encoding base64 simple + un salt
+//   const salt = "ujier_salt_2025"
+//   return btoa(password + salt)
+// }
+
+// const verifyPassword = (password: string, encryptedPassword: string): boolean => {
+//   const salt = "ujier_salt_2025"
+//   return btoa(password + salt) === encryptedPassword
+// }
+
 const verifyPassword = (
   password: string,
   encryptedPassword: string,
