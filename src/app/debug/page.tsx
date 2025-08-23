@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { DebugInfo, TestResult } from "@/app/types";
 
 export default function DebugPage() {
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchDebugInfo = async () => {
@@ -53,7 +54,7 @@ export default function DebugPage() {
       });
       const data = await response.json();
       setTestResult(data);
-      
+
       if (data.success) {
         window.location.href = "/";
       }
@@ -67,7 +68,7 @@ export default function DebugPage() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Diagnóstico de Autenticación</h1>
-      
+
       <div className="flex gap-4">
         <Button onClick={fetchDebugInfo} disabled={loading}>
           Obtener Info de Diagnóstico
@@ -111,9 +112,18 @@ export default function DebugPage() {
           <CardTitle>Instrucciones</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p>1. <strong>Obtener Info de Diagnóstico</strong>: Verifica la configuración del sistema</p>
-          <p>2. <strong>Probar Usuario Admin</strong>: Verifica que el usuario admin existe y la contraseña es correcta</p>
-          <p>3. <strong>Intentar Login Completo</strong>: Prueba el flujo completo de login</p>
+          <p>
+            1. <strong>Obtener Info de Diagnóstico</strong>: Verifica la
+            configuración del sistema
+          </p>
+          <p>
+            2. <strong>Probar Usuario Admin</strong>: Verifica que el usuario
+            admin existe y la contraseña es correcta
+          </p>
+          <p>
+            3. <strong>Intentar Login Completo</strong>: Prueba el flujo
+            completo de login
+          </p>
           <p className="text-sm text-gray-600 mt-4">
             Credenciales de emergencia: <code>admin / admin123</code>
           </p>
