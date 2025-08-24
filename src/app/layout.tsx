@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import React, { ReactNode } from "react";
+import React, { ReactNode, Suspense } from "react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import "@/styles/globals.css";
 
@@ -12,9 +12,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
       <body>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <Suspense
+          fallback={<div style={{ display: "contents" }}>{children}</div>}
+        >
+          <ThemeProvider>{children}</ThemeProvider>
+        </Suspense>
       </body>
     </html>
   );
