@@ -62,7 +62,7 @@ export default function MiembrosPage() {
   const [newMiembro, setNewMiembro] = useState({
     nombre: "",
     telefono: "",
-    categoria: "hermano" as const,
+    categoria: "hermano" as Miembro["categoria"],
     notas: "",
   });
 
@@ -180,8 +180,7 @@ export default function MiembrosPage() {
     setIsSaving(true);
     try {
       const { id, ...updateData } = editingMiembro;
-      // Excluir fechaRegistro del update ya que no debe cambiar
-      delete updateData.fechaRegistro;
+      // fechaRegistro ya no está en updateData
       await updateMiembro(id, updateData);
 
       // Recargar los datos
@@ -398,9 +397,12 @@ export default function MiembrosPage() {
               </label>
               <Select
                 value={newMiembro.categoria}
-                onValueChange={(
-                  value: "hermano" | "hermana" | "nino" | "adolescente"
-                ) => setNewMiembro({ ...newMiembro, categoria: value })}
+                onValueChange={(value) =>
+                  setNewMiembro({
+                    ...newMiembro,
+                    categoria: value as Miembro["categoria"],
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -623,10 +625,11 @@ export default function MiembrosPage() {
                 </label>
                 <Select
                   value={editingMiembro.categoria}
-                  onValueChange={(
-                    value: "hermano" | "hermana" | "nino" | "adolescente"
-                  ) =>
-                    setEditingMiembro({ ...editingMiembro, categoria: value })
+                  onValueChange={(value) =>
+                    setEditingMiembro({
+                      ...editingMiembro,
+                      categoria: value as Miembro["categoria"],
+                    })
                   }
                 >
                   <SelectTrigger>

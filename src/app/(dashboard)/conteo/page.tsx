@@ -171,7 +171,13 @@ export default function ConteoPage() {
       setNinos(datosServicioBase.ninos || 0);
       setAdolescentes(datosServicioBase.adolescentes || 0);
       setSimpatizantesCount(datosServicioBase.simpatizantes || 0);
-      setSimpatizantesDelDia(datosServicioBase.simpatizantesAsistieron || []);
+      setSimpatizantesDelDia(
+        datosServicioBase.simpatizantesAsistieron?.map((s) => ({
+          id: s.id,
+          nombre: s.nombre,
+          fechaRegistro: "",
+        })) || []
+      );
       setHermanosDelDia(datosServicioBase.miembrosAsistieron?.hermanos || []);
       setHermanasDelDia(datosServicioBase.miembrosAsistieron?.hermanas || []);
       setNinosDelDia(datosServicioBase.miembrosAsistieron?.ninos || []);
@@ -227,10 +233,19 @@ export default function ConteoPage() {
     if (newSimpatizante.nombre.trim()) {
       try {
         // Agregar a Firebase
-        const nuevoSimpatizante = await addSimpatizante({
+        const result = await addSimpatizante({
           ...newSimpatizante,
           fechaRegistro: new Date().toISOString().split("T")[0],
         });
+
+        // Construir el objeto completo SimpatizanteData
+        const nuevoSimpatizante: SimpatizanteData = {
+          id: result.id,
+          nombre: newSimpatizante.nombre,
+          fechaRegistro: new Date().toISOString().split("T")[0],
+          telefono: newSimpatizante.telefono ?? "",
+          notas: newSimpatizante.notas ?? "",
+        };
 
         // Agregar a la lista del día
         setSimpatizantesDelDia((prev) => [...prev, nuevoSimpatizante]);
@@ -284,7 +299,7 @@ export default function ConteoPage() {
       return;
     }
 
-    setterMap[categoria]?.((prev: MiembroDelDia[]) => [...prev, miembro]);
+    setterMap[categoria]?.([...currentList, miembro]);
     setShowMiembrosDialog(false);
   };
 
@@ -296,8 +311,15 @@ export default function ConteoPage() {
       adolescentes: setAdolescentesDelDia,
     };
 
-    setterMap[categoria]?.((prev: MiembroDelDia[]) =>
-      prev.filter((m: MiembroDelDia) => m.id !== miembroId)
+    const currentList =
+      ({
+        hermanos: hermanosDelDia,
+        hermanas: hermanasDelDia,
+        ninos: ninosDelDia,
+        adolescentes: adolescentesDelDia,
+      }[categoria] as MiembroDelDia[]) || [];
+    setterMap[categoria]?.(
+      currentList.filter((m: MiembroDelDia) => m.id !== miembroId)
     );
   };
 
@@ -621,7 +643,7 @@ export default function ConteoPage() {
           <div className="space-y-3 mt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   Fecha
                 </label>
@@ -633,7 +655,7 @@ export default function ConteoPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+                <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Servicio
                 </label>
@@ -653,7 +675,7 @@ export default function ConteoPage() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-600 mb-1 block flex items-center gap-1">
+              <label className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                 <User className="w-3 h-3" />
                 Ujier(es) -{" "}
                 {selectedUjieres.length > 0
@@ -944,11 +966,13 @@ export default function ConteoPage() {
         adolescentesDelDia.length > 0 ||
         simpatizantesDelDia.length > 0 ||
         (modoConsecutivo &&
-          (datosServicioBase?.simpatizantesAsistieron?.length > 0 ||
-            datosServicioBase?.miembrosAsistieron?.hermanos?.length > 0 ||
-            datosServicioBase?.miembrosAsistieron?.hermanas?.length > 0 ||
-            datosServicioBase?.miembrosAsistieron?.ninos?.length > 0 ||
-            datosServicioBase?.miembrosAsistieron?.adolescentes?.length >
+          ((datosServicioBase?.simpatizantesAsistieron?.length ?? 0) > 0 ||
+            (datosServicioBase?.miembrosAsistieron?.hermanos?.length ?? 0) >
+              0 ||
+            (datosServicioBase?.miembrosAsistieron?.hermanas?.length ?? 0) >
+              0 ||
+            (datosServicioBase?.miembrosAsistieron?.ninos?.length ?? 0) > 0 ||
+            (datosServicioBase?.miembrosAsistieron?.adolescentes?.length ?? 0) >
               0))) && (
         <Button
           variant="outline"
@@ -1182,7 +1206,7 @@ export default function ConteoPage() {
                     }[categoriaSeleccionada] || [];
                   const baseList = modoConsecutivo
                     ? datosServicioBase?.miembrosAsistieron?.[
-                        categoriaSeleccionada
+                        categoriaSeleccionada as keyof typeof datosServicioBase.miembrosAsistieron
                       ] || []
                     : [];
                   return currentList.length + baseList.length;
@@ -1217,7 +1241,7 @@ export default function ConteoPage() {
                 }[categoriaSeleccionada] || [];
               const baseList = modoConsecutivo
                 ? datosServicioBase?.miembrosAsistieron?.[
-                    categoriaSeleccionada
+                    categoriaSeleccionada as keyof typeof datosServicioBase.miembrosAsistieron
                   ] || []
                 : [];
               const totalAgregados = currentList.length + baseList.length;
@@ -1300,7 +1324,7 @@ export default function ConteoPage() {
                     }[categoriaSeleccionada] || [];
                   const baseList = modoConsecutivo
                     ? datosServicioBase?.miembrosAsistieron?.[
-                        categoriaSeleccionada
+                        categoriaSeleccionada as keyof typeof datosServicioBase.miembrosAsistieron
                       ] || []
                     : [];
 
@@ -1313,8 +1337,7 @@ export default function ConteoPage() {
                         (m: MiembroDelDia) => m.id === miembro.id
                       );
                       const noEstaEnBase = !baseList.find(
-                        (m: { id: string; nombre: string }) =>
-                          m.id === miembro.id
+                        (m: MiembroDelDia) => m.id === miembro.id
                       );
                       return nombreMatch && noEstaEnActuales && noEstaEnBase;
                     }
@@ -1333,7 +1356,7 @@ export default function ConteoPage() {
                     );
                   }
 
-                  return filteredMiembros.map((miembro) => (
+                  return filteredMiembros.map((miembro: MiembroData) => (
                     <div
                       key={miembro.id}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
@@ -1395,10 +1418,11 @@ export default function ConteoPage() {
                 <h3 className="font-semibold text-gray-800">
                   Asistentes del Servicio Base ({datosServicioBase.servicio})
                 </h3>
-                {Object.keys(datosServicioBase.miembrosAsistieron).map(
+                {["hermanos", "hermanas", "ninos", "adolescentes"].map(
                   (catKey) => {
-                    const members =
-                      datosServicioBase.miembrosAsistieron[catKey];
+                    const members = (datosServicioBase.miembrosAsistieron?.[
+                      catKey as keyof typeof datosServicioBase.miembrosAsistieron
+                    ] ?? []) as { id: string; nombre: string }[];
                     if (members.length === 0) return null;
                     return (
                       <div key={`base-${catKey}`}>
@@ -1419,13 +1443,14 @@ export default function ConteoPage() {
                     );
                   }
                 )}
-                {datosServicioBase.simpatizantesAsistieron.length > 0 && (
+                {(datosServicioBase.simpatizantesAsistieron?.length ?? 0) >
+                  0 && (
                   <div>
                     <h4 className="font-semibold text-emerald-700 mb-2">
                       Simpatizantes (
-                      {datosServicioBase.simpatizantesAsistieron.length})
+                      {datosServicioBase.simpatizantesAsistieron?.length ?? 0})
                     </h4>
-                    {datosServicioBase.simpatizantesAsistieron.map(
+                    {datosServicioBase.simpatizantesAsistieron?.map(
                       (simpatizante: { id: string; nombre: string }) => (
                         <div
                           key={simpatizante.id}
